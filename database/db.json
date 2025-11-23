@@ -1,0 +1,49 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "email": "nuntius.creative.hub@gmail.com",
+      "name": "Administrador",
+      "role": "admin",
+      "createdAt": "2024-11-23T10:00:00.000Z",
+      "picture": "https://lh3.googleusercontent.com/a/ACg8ocJJhgUPiqDvyywaOk7FEGUgElEu6JFlUa9HDYiSHBQjK2raIsQ=s96-c"
+    },
+    {
+      "id": "2",
+      "email": "cliente1@gmail.com",
+      "name": "Cliente 1",
+      "role": "user",
+      "createdAt": "2024-11-23T10:30:00.000Z"
+    },
+    {
+      "id": "1763915207513",
+      "email": "jeraoh90@gmail.com",
+      "name": "Jeyson Orozco",
+      "role": "user",
+      "createdAt": "2025-11-23T16:26:47.515Z",
+      "picture": "https://lh3.googleusercontent.com/a/ACg8ocJ78IkPNd43KeoNrVcA4amzjkCuVS2F7wdqdXWbwqYzihlef6o0=s96-c"
+    }
+  ],
+  "instanceOwnership": [
+    {
+      "instanceName": "ventas_01",
+      "ownerId": "2",
+      "createdAt": "2024-11-23T11:00:00.000Z"
+    },
+    {
+      "instanceName": "soporte_01",
+      "ownerId": "2",
+      "createdAt": "2024-11-23T11:15:00.000Z"
+    },
+    {
+      "instanceName": "ventas",
+      "ownerId": "2",
+      "createdAt": "2025-11-23T16:27:05.721Z"
+    },
+    {
+      "instanceName": "nuntius_pruebas",
+      "ownerId": "1763915207513",
+      "createdAt": "2025-11-23T18:02:14.565Z"
+    }
+  ]
+}

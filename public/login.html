@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Nuntius</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.1/css/bulma.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --primary-purple: #8B5CF6;
+      --primary-blue: #3B82F6;
+      --accent-pink: #EC4899;
+      --accent-cyan: #06B6D4;
+      --dark-bg: #0F172A;
+      --glass-bg: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.18);
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Fondo Animado con Mesh Gradient */
+    .gradient-bg {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.4) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.4) 0%, transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(59, 130, 246, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(6, 182, 212, 0.3) 0%, transparent 50%);
+      animation: gradientShift 15s ease infinite;
+    }
+
+    @keyframes gradientShift {
+      0%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+      50% { opacity: 0.8; transform: scale(1.1) rotate(5deg); }
+    }
+
+    /* Partículas Flotantes */
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      pointer-events: none;
+      animation: floatParticle 20s infinite ease-in-out;
+    }
+
+    .particle:nth-child(1) { width: 80px; height: 80px; top: 10%; left: 10%; animation-delay: 0s; }
+    .particle:nth-child(2) { width: 60px; height: 60px; top: 70%; left: 80%; animation-delay: 2s; }
+    .particle:nth-child(3) { width: 100px; height: 100px; top: 40%; left: 70%; animation-delay: 4s; }
+    .particle:nth-child(4) { width: 50px; height: 50px; top: 80%; left: 20%; animation-delay: 6s; }
+
+    @keyframes floatParticle {
+      0%, 100% { transform: translateY(0) translateX(0) scale(1); opacity: 0.3; }
+      25% { transform: translateY(-30px) translateX(20px) scale(1.1); opacity: 0.5; }
+      50% { transform: translateY(-60px) translateX(-20px) scale(0.9); opacity: 0.3; }
+      75% { transform: translateY(-30px) translateX(30px) scale(1.05); opacity: 0.4; }
+    }
+
+    /* Contenedor Principal */
+    .login-container {
+      position: relative;
+      z-index: 10;
+      animation: fadeInUp 0.8s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Tarjeta de Login */
+    .login-card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(30px) saturate(180%);
+      -webkit-backdrop-filter: blur(30px) saturate(180%);
+      border-radius: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.3),
+        0 0 100px rgba(139, 92, 246, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      padding: 3.5rem 3rem;
+      max-width: 460px;
+      width: 90%;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+      animation: shimmer 3s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .login-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 
+        0 30px 80px rgba(0, 0, 0, 0.4),
+        0 0 120px rgba(139, 92, 246, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+
+    /* Logo con efecto glow */
+    .brand-logo-container {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 2rem;
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .brand-logo {
+      width: 90px;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 24px;
+      box-shadow: 
+        0 8px 32px rgba(139, 92, 246, 0.4),
+        0 0 60px rgba(139, 92, 246, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .brand-logo:hover {
+      transform: rotate(5deg) scale(1.1);
+      box-shadow: 
+        0 12px 40px rgba(139, 92, 246, 0.6),
+        0 0 80px rgba(139, 92, 246, 0.4);
+    }
+
+    /* Textos */
+    .title-text {
+      background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 800;
+      font-size: 2rem;
+      letter-spacing: -1px;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 2px 20px rgba(255, 255, 255, 0.3);
+    }
+
+    .subtitle-text {
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 400;
+      font-size: 1rem;
+      margin-bottom: 2.5rem;
+      line-height: 1.6;
+    }
+
+    /* Botón de Google Premium */
+    .google-btn {
+      background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+      border: none;
+      color: #1f2937;
+      font-weight: 700;
+      font-size: 1.05rem;
+      padding: 1.3rem 2rem;
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 
+        0 8px 24px rgba(0, 0, 0, 0.15),
+        0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .google-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+      transition: left 0.5s;
+    }
+
+    .google-btn:hover::before {
+      left: 100%;
+    }
+
+    .google-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 
+        0 12px 32px rgba(0, 0, 0, 0.2),
+        0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .google-btn:active {
+      transform: translateY(0);
+    }
+
+    .google-btn .icon {
+      background: linear-gradient(135deg, #EA4335, #FBBC05, #34A853, #4285F4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 1.3rem;
+    }
+
+    /* Footer text */
+    .footer-text {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.875rem;
+      margin-top: 2rem;
+      line-height: 1.6;
+    }
+
+    .terms-link {
+      color: #ffffff;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      position: relative;
+      transition: all 0.3s ease;
+      display: inline-block;
+    }
+
+    .terms-link::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #8B5CF6, #EC4899);
+      transition: width 0.3s ease;
+    }
+
+    .terms-link:hover::after {
+      width: 100%;
+    }
+
+    .terms-link:hover {
+      color: #ffffff;
+      text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+    }
+
+    /* Modal Mejorado */
+    .modal-card {
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-card-head {
+      background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+      border: none;
+      padding: 1.5rem;
+    }
+
+    .modal-card-title {
+      color: white;
+      font-weight: 700;
+      font-size: 1.25rem;
+    }
+
+    .delete {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .delete:hover {
+      background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .modal-card-body {
+      text-align: left;
+      font-size: 0.95rem;
+      line-height: 1.7;
+      padding: 2rem;
+    }
+
+    .term-section {
+      margin-bottom: 1.5rem;
+      padding-left: 1rem;
+      border-left: 3px solid #8B5CF6;
+    }
+
+    .term-title {
+      font-weight: 700;
+      color: #8B5CF6;
+      margin-bottom: 0.5rem;
+      display: block;
+      font-size: 1.05rem;
+    }
+
+    .modal-card-foot {
+      background: #f8f9fa;
+      padding: 1.5rem;
+      justify-content: center;
+    }
+
+    .modal-card-foot .button {
+      background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+      color: white;
+      border: none;
+      padding: 0.75rem 2.5rem;
+      font-weight: 600;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .modal-card-foot .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .login-card {
+        padding: 2.5rem 2rem;
+        border-radius: 24px;
+      }
+      .title-text {
+        font-size: 1.75rem;
+      }
+      .brand-logo {
+        width: 75px;
+        height: 75px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="gradient-bg"></div>
+  
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+
+  <div class="login-container">
+    <div class="login-card has-text-centered">
+      <div class="brand-logo-container">
+        <img src="/Logo.png" alt="Nuntius Logo" class="brand-logo">
+      </div>
+      
+      <h1 class="title-text">Bienvenido a Nuntius</h1>
+      <p class="subtitle-text">Tu centro de control inteligente para WhatsApp Business</p>
+      
+      <div class="content">
+        <a href="/auth/google" class="button is-fullwidth google-btn">
+          <span class="icon is-small mr-2"><i class="fab fa-google"></i></span>
+          <span>Continuar con Google</span>
+        </a>
+      </div>
+      
+      <p class="footer-text">
+        Al acceder, aceptas nuestros <br>
+        <a class="terms-link" onclick="openModal()">Términos y Condiciones de Servicio</a>
+      </p>
+    </div>
+  </div>
+
+  <div class="modal" id="termsModal">
+    <div class="modal-background" onclick="closeModal()"></div>
+    <div class="modal-card">
+      <header class="modal-card-head">
+        <p class="modal-card-title">📋 Términos del Servicio</p>
+        <button class="delete" aria-label="close" onclick="closeModal()"></button>
+      </header>
+      <section class="modal-card-body">
+        
+        <div class="term-section">
+          <span class="term-title">1. Sobre Nuntius</span>
+          <p>Nuntius es una plataforma SaaS (Software as a Service) que facilita la gestión de mensajería y contactos. Al utilizar nuestro servicio, usted acepta que Nuntius actúa únicamente como un proveedor de herramientas tecnológicas y no es responsable del contenido de los mensajes enviados por los usuarios.</p>
+        </div>
+
+        <div class="term-section">
+          <span class="term-title">2. Uso de WhatsApp (Meta Platforms, Inc.)</span>
+          <p>El usuario reconoce y acepta cumplir con las <strong>Políticas de Comercio</strong> y las <strong>Condiciones del Servicio de WhatsApp</strong>. Está estrictamente prohibido:</p>
+          <ul style="list-style-type: disc; margin-left: 20px;">
+            <li>Enviar spam o mensajería masiva no solicitada.</li>
+            <li>Enviar contenido ilegal, ofensivo o fraudulento.</li>
+            <li>Violar la propiedad intelectual de terceros.</li>
+          </ul>
+          <p class="is-size-7 mt-2"><em>El incumplimiento puede resultar en el bloqueo de su número por parte de WhatsApp, del cual Nuntius no se hace responsable.</em></p>
+        </div>
+
+        <div class="term-section">
+          <span class="term-title">3. Uso de Evolution API</span>
+          <p>Nuntius opera utilizando la tecnología de código abierto de Evolution API. Este servicio no está afiliado, asociado, autorizado, respaldado ni conectado oficialmente de ninguna manera con WhatsApp ni con Meta Platforms, Inc. Es una herramienta independiente para facilitar la integración.</p>
+        </div>
+
+        <div class="term-section">
+          <span class="term-title">4. Privacidad y Datos</span>
+          <p>Sus datos son confidenciales. Nuntius implementa una arquitectura "Multi-Tenant" asegurando que su información (contactos, instancias y mensajes) sea privada y accesible únicamente por su cuenta autorizada.</p>
+        </div>
+
+      </section>
+      <footer class="modal-card-foot">
+        <button class="button" onclick="closeModal()">Entendido</button>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    function openModal() {
+      document.getElementById('termsModal').classList.add('is-active');
+    }
+    function closeModal() {
+      document.getElementById('termsModal').classList.remove('is-active');
+    }
+  </script>
+</body>
+</html>

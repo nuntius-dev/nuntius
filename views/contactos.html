@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestión de Clientes - Nuntius</title>
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.1/css/bulma.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/css/custom.css?v=2.0"> 
+  
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  
+  <style>
+    /* =========================================
+       ESTILOS DEL TEMA + FIXES
+       ========================================= */
+    
+    /* FIX: Evita que el selector de país rompa la línea */
+    #countryCodeSelect {
+        max-width: 130px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+
+    /* Estilos base */
+    html[data-theme="dark"] .table { background-color: hsl(0, 0%, 21%); color: hsl(0, 0%, 96%); }
+    html[data-theme="dark"] .table th { color: hsl(0, 0%, 96%); }
+    html[data-theme="dark"] .table tr:hover { background-color: hsl(0, 0%, 29%) !important; }
+    html[data-theme="dark"] .table td, html[data-theme="dark"] .table th { border-color: hsl(0, 0%, 29%); vertical-align: middle; }
+    html[data-theme="dark"] .input, html[data-theme="dark"] .select select, html[data-theme="dark"] .textarea { background-color: hsl(0, 0%, 29%); border-color: hsl(0, 0%, 35%); color: hsl(0, 0%, 96%); }
+    
+    .tag.is-success { background-color: #48c774; color: #fff; }
+    .tag.is-danger { background-color: #f14668; color: #fff; }
+    input[type=checkbox] { transform: scale(1.2); cursor: pointer; }
+    
+    #globalLoader {
+        position: fixed; top:0; left:0; width:100%; height:100%;
+        background: rgba(255,255,255,0.8); z-index: 9999;
+        display: none; align-items: center; justify-content: center;
+    }
+    html[data-theme="dark"] #globalLoader { background: rgba(0,0,0,0.8); }
+  </style>
+
+  <script>
+    (function() {
+      const theme = localStorage.getItem('theme');
+      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      else document.documentElement.setAttribute('data-theme', 'light');
+    })();
+  </script>
+</head>
+<body>
+  
+  <div id="globalLoader"><div class="loader is-loading is-size-1"></div></div>
+
+  <section class="hero is-info is-bold">
+    <div class="hero-body">
+      <div class="container">
+        <div class="columns is-vcentered">
+          <div class="column">
+            <a href="/" class="title is-5 has-text-white">⬅️ Volver</a>
+            <h1 class="title is-2">💰 Gestión de Clientes</h1>
+          </div>
+
+          <div class="column is-narrow">
+            <div class="is-flex is-align-items-center">
+                
+                <div class="mr-4 has-text-right is-hidden-mobile">
+                    <p class="is-size-7 has-text-light">Hola,</p>
+                    <p class="is-size-6 has-text-weight-bold" id="userNameDisplay">...</p>
+                </div>
+
+                <div class="buttons">
+                    <button class="button is-light is-rounded" id="theme-toggle" onclick="toggleDarkMode()">🌙</button>
+                    <a href="/auth/logout" class="button is-danger is-light is-rounded" title="Cerrar Sesión">
+                        <span class="icon"><i class="fas fa-sign-out-alt"></i></span>
+                    </a>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="columns">
+        
+        <div class="column is-one-third">
+          <div class="box">
+            <h2 class="title is-5" id="formTitle">Detalles del Cliente</h2>
+            <form id="contactForm">
+              <input type="hidden" id="contactId" />
+
+              <div class="field">
+                <label class="label">Nombre</label>
+                <div class="control"><input class="input" type="text" id="nombre" required /></div>
+              </div>
+
+              <div class="field">
+                <label class="label">Teléfono</label>
+                <div class="field has-addons">
+                  <div class="control">
+                    <span class="select">
+                      <select id="countryCodeSelect">
+                        <option value="57">Loading...</option>
+                      </select>
+                    </span>
+                  </div>
+                  <div class="control is-expanded">
+                    <input class="input" type="text" id="telefonoInput" required />
+                  </div>
+                  <div class="control">
+                      <a class="button is-static" id="phoneStatus"></a>
+                  </div>
+                </div>
+              </div>
+
+              <div class="columns">
+                <div class="column">
+                   <div class="field">
+                    <label class="label">Monto ($)</label>
+                    <div class="control"><input class="input" type="text" id="monto" placeholder="50000" /></div>
+                  </div>
+                </div>
+                <div class="column">
+                  <div class="field">
+                    <label class="label">Fecha Venc.</label>
+                    <div class="control"><input class="input" type="date" id="fecha" /></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="columns">
+                <div class="column">
+                  <div class="field">
+                    <label class="label">Estado</label>
+                    <div class="control">
+                      <span class="select is-fullwidth">
+                        <select id="estado">
+                          <option value="IMPAGA">🔴 IMPAGA</option>
+                          <option value="PAGA">🟢 PAGA</option>
+                          <option value="PROMO">🔵 PROMO</option> 
+                        </select>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="column">
+                   <div class="field">
+                    <label class="label">¿Enviado?</label>
+                    <div class="control">
+                      <label class="checkbox mt-2">
+                        <input type="checkbox" id="enviadoCheck"> Notificado
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="label">Notas</label>
+                <div class="control"><textarea class="textarea" id="notas" rows="2"></textarea></div>
+              </div>
+
+              <div class="field">
+                <button type="submit" class="button is-info is-fullwidth" id="submitBtn">Guardar</button>
+              </div>
+              <div class="field" id="cancelBtnContainer" style="display: none;">
+                <button type="button" class="button is-light is-fullwidth" onclick="resetForm()">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="column is-two-thirds">
+          <div class="box">
+            <div class="level mb-2">
+              <div class="level-left">
+                <h2 class="title is-5">Base de Datos</h2>
+              </div>
+              <div class="level-right">
+                <div class="buttons">
+                   <button class="button is-danger is-small" id="btnBorrarSeleccionados" style="display: none;" onclick="borrarSeleccionados()">
+                     🗑️ Borrar Seleccionados (<span id="countSeleccionados">0</span>)
+                   </button>
+                   <button class="button is-danger is-outlined is-small" onclick="borrarTodo()">
+                     💣 Borrar Todo
+                   </button>
+                 </div>
+              </div>
+            </div>
+            
+            <article class="message is-small is-info">
+              <div class="message-header"><p>Importar Google Sheet (Pega el Link Completo)</p></div>
+              <div class="message-body">
+                <div class="field is-horizontal">
+                   <div class="field-body">
+                     <div class="field">
+                       <div class="control is-expanded">
+                         <div class="select is-fullwidth is-small">
+                           <select id="defaultImportCountry"><option value="">Cargando...</option></select>
+                         </div>
+                       </div>
+                     </div>
+                     <div class="field" style="flex-grow: 2;">
+                        <div class="control">
+                          <input class="input is-small" type="text" id="sheetIdInput" placeholder="https://docs.google.com/spreadsheets/d/...">
+                        </div>
+                     </div>
+                     <div class="field">
+                        <div class="control"><input class="input is-small" type="text" id="sheetRangeInput" value="Clientes!A:H" placeholder="Rango"></div>
+                     </div>
+                     <div class="field">
+                        <button class="button is-success is-small" id="importFromSheetBtn">Importar</button>
+                     </div>
+                   </div>
+                </div>
+              </div>
+            </article>
+
+            <p id="totalContacts" class="subtitle is-7 mb-2">Total: 0</p>
+            
+            <div class="table-container">
+              <table class="table is-fullwidth is-striped is-hoverable is-narrow">
+                <thead>
+                  <tr>
+                    <th><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
+                    <th title="Enviado">Env.</th>
+                    <th>Nombre</th>
+                    <th>Teléfono</th>
+                    <th>Monto</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="contactsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // ==========================================
+    // ⚙️ CONFIGURACIÓN Y ESTADO
+    // ==========================================
+    const API_BASE = '/api';
+    let paisesData = [];
+    let contactsData = [];
+    let currentInstance = "";
+
+    const form = document.getElementById("contactForm");
+    const inputs = {
+      id: document.getElementById("contactId"),
+      nombre: document.getElementById("nombre"),
+      telefono: document.getElementById("telefonoInput"),
+      cc: document.getElementById("countryCodeSelect"),
+      monto: document.getElementById("monto"),
+      fecha: document.getElementById("fecha"),
+      estado: document.getElementById("estado"),
+      enviado: document.getElementById("enviadoCheck"),
+      notas: document.getElementById("notas")
+    };
+    const importEls = {
+        country: document.getElementById("defaultImportCountry"),
+        id: document.getElementById("sheetIdInput"),
+        range: document.getElementById("sheetRangeInput"),
+        btn: document.getElementById("importFromSheetBtn")
+    };
+
+    // ==========================================
+    // 🚀 INICIALIZACIÓN
+    // ==========================================
+    window.onload = async () => {
+      // 1. Obtener Instancia
+      const params = new URLSearchParams(window.location.search);
+      currentInstance = params.get("instance");
+      if(!currentInstance) console.warn("Modo sin instancia.");
+
+      // 2. Link guardado
+      const savedLink = localStorage.getItem('sheetUrl');
+      if(savedLink) importEls.id.value = savedLink;
+
+      // 3. Cargar Datos y Usuario
+      await Promise.all([
+          loadPaises(), 
+          loadContacts(),
+          loadUserInfo() // <--- 🔥 CARGAMOS EL NOMBRE AQUÍ
+      ]);
+      
+      // 4. Event Listeners
+      inputs.telefono.addEventListener("blur", checkPhone);
+      inputs.cc.addEventListener("change", checkPhone);
+      form.addEventListener("submit", saveContact);
+      importEls.btn.addEventListener("click", importSheet);
+    };
+
+    // ==========================================
+    // 👤 CARGAR INFO USUARIO (NUEVO)
+    // ==========================================
+    async function loadUserInfo() {
+        try {
+            const res = await safeFetch('/api/me');
+            if(res && res.ok) {
+                const user = await res.json();
+                const display = document.getElementById('userNameDisplay');
+                // Usamos el nombre, o si no tiene, la parte antes del @ del email
+                const cleanName = user.name || user.email.split('@')[0];
+                display.textContent = cleanName;
+            }
+        } catch(e) { console.error("Error user info", e); }
+    }
+
+    // ==========================================
+    // 🌍 CARGAR PAÍSES
+    // ==========================================
+    async function loadPaises() {
+      const res = await safeFetch(`${API_BASE}/paises`);
+      if(!res) return;
+      let rawData = await res.json();
+      paisesData = rawData.sort((a, b) => a.name.localeCompare(b.name));
+      
+      inputs.cc.innerHTML = "";
+      importEls.country.innerHTML = "";
+      
+      paisesData.forEach(p => {
+        const code = p.dial_code.replace("+","");
+        const label = `${p.name} (+${code})`;
+        const opt = new Option(label, code);
+        inputs.cc.add(opt);
+        const impOpt = new Option(label, code);
+        importEls.country.add(impOpt);
+      });
+      inputs.cc.value = "57"; 
+      const savedCode = localStorage.getItem('importCode') || "57";
+      importEls.country.value = savedCode;
+      importEls.country.addEventListener('change', () => localStorage.setItem('importCode', importEls.country.value));
+    }
+
+    // ==========================================
+    // 👥 CARGAR CONTACTOS
+    // ==========================================
+    async function loadContacts() {
+      const res = await safeFetch(`${API_BASE}/contacts`);
+      if(!res) return;
+      const d = await res.json();
+      contactsData = d.contactos || [];
+      document.getElementById("totalContacts").textContent = `Total: ${contactsData.length}`;
+      const tbody = document.getElementById("contactsTableBody");
+      tbody.innerHTML = "";
+      document.getElementById("checkAll").checked = false;
+      updateDeleteButton();
+
+      if(contactsData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="has-text-centered has-text-grey">Sin datos</td></tr>`;
+        return;
+      }
+      contactsData.forEach(c => {
+        const tr = document.createElement("tr");
+        const enviadoIcon = c.enviado ? "✅" : "❌";
+        const estado = (c.etiquetas && c.etiquetas[0]) ? c.etiquetas[0] : "IMPAGA";
+        let color = "is-light";
+        if(estado === "PAGA") color = "is-success";
+        else if(estado === "IMPAGA") color = "is-danger";
+        else color = "is-info"; 
+        
+        tr.innerHTML = `
+          <td><input type="checkbox" class="row-check" value="${c.id}" onclick="updateDeleteButton()"></td>
+          <td style="text-align:center;">${enviadoIcon}</td>
+          <td>${c.nombre}</td>
+          <td>+${c.telefono}</td>
+          <td>${c.monto || "-"}</td>
+          <td>${c.fechaNacimiento || ""}</td>
+          <td><span class="tag ${color} is-light">${estado}</span></td>
+          <td><button class="button is-small is-info is-outlined" onclick="editC('${c.id}')">✏️</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ==========================================
+    // 💾 GUARDAR & RESTO DE FUNCIONES
+    // ==========================================
+    async function saveContact(e) {
+      e.preventDefault();
+      const fullPhone = inputs.cc.value + inputs.telefono.value;
+      const body = {
+        nombre: inputs.nombre.value,
+        telefono: fullPhone,
+        monto: inputs.monto.value,
+        fecha: inputs.fecha.value,
+        estado: inputs.estado.value,
+        enviado: inputs.enviado.checked,
+        notas: inputs.notas.value
+      };
+      const id = inputs.id.value;
+      const method = id ? "PUT" : "POST";
+      const url = id ? `${API_BASE}/contacts/${id}` : `${API_BASE}/contacts`;
+      
+      const btn = document.getElementById("submitBtn");
+      btn.classList.add("is-loading");
+      const res = await safeFetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      btn.classList.remove("is-loading");
+      
+      if(res && res.ok) { resetForm(); loadContacts(); }
+      else { alert("Error guardando"); }
+    }
+
+    // Funciones Helper (sin cambios de lógica)
+    function toggleAll(source) { document.querySelectorAll('.row-check').forEach(cb => cb.checked = source.checked); updateDeleteButton(); }
+    function updateDeleteButton() {
+        const checked = document.querySelectorAll('.row-check:checked').length;
+        document.getElementById('countSeleccionados').textContent = checked;
+        document.getElementById('btnBorrarSeleccionados').style.display = checked > 0 ? "inline-flex" : "none";
+    }
+    async function borrarSeleccionados() {
+        const checkboxes = document.querySelectorAll('.row-check:checked');
+        const ids = Array.from(checkboxes).map(cb => cb.value);
+        if(!confirm("¿Borrar seleccionados?")) return;
+        const res = await safeFetch(`${API_BASE}/contacts/delete-bulk`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ ids }) });
+        if(res && res.ok) loadContacts();
+    }
+    async function borrarTodo() {
+        if(!confirm("¿BORRAR TODO?")) return;
+        const res = await safeFetch(`${API_BASE}/contacts-all`, { method: 'DELETE' });
+        if(res && res.ok) loadContacts();
+    }
+    function editC(id) {
+      const c = contactsData.find(x => x.id === id);
+      if(!c) return;
+      document.getElementById("formTitle").textContent = "Editar Cliente";
+      document.getElementById("cancelBtnContainer").style.display = "block";
+      document.getElementById("submitBtn").textContent = "Actualizar";
+      inputs.id.value = c.id;
+      inputs.nombre.value = c.nombre;
+      let full = c.telefono || "";
+      let cc = "57", num = full;
+      const match = paisesData.find(p => full.startsWith(p.dial_code.replace("+","")));
+      if(match) { cc = match.dial_code.replace("+",""); num = full.substring(cc.length); }
+      inputs.cc.value = cc;
+      inputs.telefono.value = num;
+      inputs.monto.value = c.monto || "";
+      inputs.fecha.value = c.fechaNacimiento || "";
+      inputs.estado.value = (c.etiquetas && c.etiquetas[0]) ? c.etiquetas[0] : "IMPAGA";
+      inputs.enviado.checked = c.enviado === true;
+      inputs.notas.value = c.notas || "";
+      window.scrollTo(0,0);
+    }
+    function resetForm() {
+      form.reset();
+      document.getElementById("formTitle").textContent = "Detalles del Cliente";
+      inputs.id.value = "";
+      document.getElementById("cancelBtnContainer").style.display = "none";
+      document.getElementById("submitBtn").textContent = "Guardar";
+      inputs.cc.value = "57";
+    }
+    async function checkPhone() {
+       const stat = document.getElementById("phoneStatus");
+       if(!inputs.telefono.value) { stat.innerHTML=""; return; }
+       stat.innerHTML="⏳";
+       const res = await safeFetch(`${API_BASE}/check-number`, { method:"POST", headers:{'Content-Type':'application/json'}, body: JSON.stringify({ instanceName: currentInstance, number: inputs.cc.value + inputs.telefono.value }) });
+       if(res) {
+           const d = await res.json();
+           stat.innerHTML = (d.success && d.exists) ? "✅" : "❌";
+       }
+    }
+    async function importSheet() {
+        let sheetInput = importEls.id.value;
+        if(!sheetInput) return alert("Link requerido");
+        let finalId = sheetInput;
+        const m = sheetInput.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        if(m && m[1]) finalId = m[1];
+        importEls.btn.classList.add("is-loading");
+        const res = await safeFetch(`${API_BASE}/import-from-sheet`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sheetId: finalId, range: importEls.range.value, defaultCode: importEls.country.value }) });
+        importEls.btn.classList.remove("is-loading");
+        if(res && res.ok) { alert("Importado"); loadContacts(); }
+        else alert("Error importando");
+    }
+
+    // ==========================================
+    // 🛡️ AUTH GUARD
+    // ==========================================
+    async function safeFetch(url, options = {}) {
+        try {
+            const response = await fetch(url, options);
+            if (response.status === 401) { window.location.href = '/login.html'; return null; }
+            return response;
+        } catch (error) { console.error("Fetch Error:", error); throw error; }
+    }
+
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+    }
+  </script>
+</body>
+</html>

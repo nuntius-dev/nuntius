@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Recordatorios Automáticos - Evolution API</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@1.0.1/css/bulma.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="/css/custom.css?v=2.0">
+
+    <style>
+      /* CORRECCIÓN: Cajas de información en Modo Oscuro */
+      html[data-theme="dark"] .box.has-background-info-light,
+      html[data-theme="dark"] .notification.is-info.is-light,
+      html[data-theme="dark"] .notification.is-primary.is-light,
+      html[data-theme="dark"] .box.has-background-light {
+        /* Un azul/gris oscuro para el fondo */
+        background-color: hsl(217, 71%, 15%) !important;
+        /* Texto claro para que se lea bien */
+        color: hsl(0, 0%, 96%) !important;
+        /* (Opcional) Un borde sutil para definirlo mejor */
+        border: 1px solid hsl(217, 71%, 25%);
+      }
+
+      /* CORRECCIÓN: Texto fuerte (títulos) dentro de esas cajas */
+      html[data-theme="dark"] .box.has-background-info-light strong,
+      html[data-theme="dark"] .box.has-background-info-light .title,
+      html[data-theme="dark"] .box.has-background-light strong {
+        color: white !important;
+      }
+      .autocomplete-dropdown {
+        position: absolute;
+        background: white;
+        border: 1px solid #dbdbdb;
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 100;
+        width: 100%;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      /* Fix dropdown oscuro */
+      html[data-theme="dark"] .autocomplete-dropdown {
+          background: #2d2d2d;
+          border-color: #4a4a4a;
+          color: white;
+      }
+      .autocomplete-item {
+        padding: 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #f5f5f5;
+      }
+      html[data-theme="dark"] .autocomplete-item { border-bottom: 1px solid #4a4a4a; }
+      .autocomplete-item:hover {
+        background: #f5f5f5;
+      }
+      html[data-theme="dark"] .autocomplete-item:hover { background: #3a3a3a; }
+
+      .selected-contact {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: #e8f5e9;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        margin: 0.25rem;
+      }
+      html[data-theme="dark"] .selected-contact { background: #1b5e20; color: white; }
+
+      /* Estilos Tabs Personalizados */
+      .tabs.is-toggle li.is-active a {
+        background-color: #3e8ed0;
+        border-color: #3e8ed0;
+      }
+
+      /* Global Dark Fixes */
+      html[data-theme="dark"] { background-color: #1e1e1e; color: #eee; }
+      html[data-theme="dark"] .box { background-color: #2d2d2d; color: #eee; }
+      html[data-theme="dark"] .title, html[data-theme="dark"] .subtitle, html[data-theme="dark"] .label { color: #eee; }
+      html[data-theme="dark"] .input, html[data-theme="dark"] .select select, html[data-theme="dark"] .textarea { background-color: #3a3a3a; border-color: #4a4a4a; color: white; }
+      html[data-theme="dark"] .table { background-color: #2d2d2d; color: #eee; }
+      html[data-theme="dark"] .table th { color: white; }
+      html[data-theme="dark"] .table tr:hover { background-color: #3a3a3a !important; }
+    </style>
+
+    <script>
+      (function () {
+        const theme = localStorage.getItem("theme");
+        if (theme === "dark") {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <section class="hero is-link is-bold">
+      <div class="hero-body">
+        <div class="container">
+          <div class="columns is-vcentered">
+            <div class="column">
+              <a href="/" class="button is-light is-small mb-3"
+                >⬅️ Volver al Inicio</a
+              >
+              <h1 class="title is-1">🔔 Recordatorios Automáticos</h1>
+              <p class="subtitle is-4">Gestión de Cobranza y Avisos</p>
+            </div>
+            
+            <div class="column is-narrow">
+              <div class="is-flex is-align-items-center">
+                  <div class="mr-4 has-text-right is-hidden-mobile">
+                      <p class="is-size-7 has-text-light">Hola,</p>
+                      <p class="is-size-6 has-text-weight-bold" id="userNameDisplay">...</p>
+                  </div>
+                  <div class="buttons">
+                      <button class="button is-light is-rounded" id="theme-toggle" onclick="toggleDarkMode()">🌙</button>
+                      <a href="/auth/logout" class="button is-danger is-light is-rounded" title="Cerrar Sesión">
+                          <span class="icon"><i class="fas fa-sign-out-alt"></i></span>
+                      </a>
+                  </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="tabs is-boxed is-large">
+          <ul>
+            <li class="is-active" data-tab="crear">
+              <a onclick="changeTab('crear')">
+                <span class="icon">📝</span>
+                <span>Crear Recordatorio</span>
+              </a>
+            </li>
+            <li data-tab="plantillas">
+              <a onclick="changeTab('plantillas')">
+                <span class="icon">📋</span>
+                <span>Plantillas</span>
+                <span class="tag is-warning ml-2" id="countPlantillas">0</span>
+              </a>
+            </li>
+            <li data-tab="programados">
+              <a onclick="changeTab('programados')">
+                <span class="icon">📅</span>
+                <span>Programados</span>
+                <span class="tag is-info ml-2" id="countProgramados">0</span>
+              </a>
+            </li>
+            <li data-tab="historial">
+              <a onclick="changeTab('historial')">
+                <span class="icon">📊</span>
+                <span>Historial</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div id="tab-crear" class="tab-content">
+          <div class="columns">
+            <div class="column is-8">
+              <div class="box">
+                <h2 class="title is-4">Configurar Nuevo Recordatorio</h2>
+
+                <div class="box has-background-light">
+                  <h3 class="subtitle is-5">📋 Tipo de Recordatorio</h3>
+                  <div class="field">
+                    <div class="control">
+                      <div class="select is-fullwidth">
+                        <select id="tipoRecordatorio" onchange="updateForm()">
+                          <option value="">-- Selecciona un tipo --</option>
+                          <optgroup label="🧪 Operativo">
+                            <option value="prueba">
+                              ⚡ Mensaje Inmediato (Prueba/Aviso)
+                            </option>
+                          </optgroup>
+                          <optgroup label="📅 Facturación">
+                            <option value="revision">
+                              📅 Vencimiento de Factura
+                            </option>
+                            <option value="aniversario">
+                              ⚠️ Aviso de Corte/Suspensión
+                            </option>
+                          </optgroup>
+                          <optgroup label="🔔 Recurrentes">
+                            <option value="mensual">
+                              📅 Generación de Factura (Mensual)
+                            </option>
+                            <option value="semanal">
+                              📢 Promociones (Semanal)
+                            </option>
+                          </optgroup>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    id="descripcionTipo"
+                    class="notification is-info is-light"
+                    style="display: none"
+                  >
+                    <p id="descripcionTexto"></p>
+                  </div>
+                </div>
+
+                <div class="box has-background-light" id="instanceBox">
+                  <h3 class="subtitle is-5">📱 Seleccionar Instancia</h3>
+                  <div class="field">
+                    <div class="control">
+                      <div class="select is-fullwidth">
+                        <select id="instanceSelect">
+                          <option value="">Cargando...</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  id="configuracionTemporal"
+                  class="box has-background-light"
+                  style="display: none"
+                >
+                  <h3 class="subtitle is-5">⏰ Configuración de Envío</h3>
+
+                  <div id="config-prueba" style="display: none">
+                    <div class="field">
+                      <label class="label">Hora de envío (hoy):</label>
+                      <div class="control">
+                        <input
+                          class="input"
+                          type="time"
+                          id="horaPrueba"
+                          value=""
+                        />
+                      </div>
+                      <p class="help">El mensaje se enviará hoy a esta hora</p>
+                    </div>
+                  </div>
+
+                  <div id="config-fecha" style="display: none">
+                    <div class="field">
+                      <label class="label">Días de anticipación:</label>
+                      <div class="control">
+                        <input
+                          class="input"
+                          type="number"
+                          id="diasAnticipacion"
+                          value="0"
+                          min="0"
+                          max="30"
+                        />
+                      </div>
+                      <p class="help">Enviar X días antes de la fecha</p>
+                    </div>
+                  </div>
+
+                  <div id="config-recurrente" style="display: none">
+                    <div class="columns">
+                      <div class="column">
+                        <div class="field">
+                          <label class="label">Día:</label>
+                          <div class="select is-fullwidth">
+                            <select id="diaEnvio">
+                              <option value="lunes">Lunes</option>
+                              <option value="martes">Martes</option>
+                              <option value="miercoles">Miércoles</option>
+                              <option value="jueves">Jueves</option>
+                              <option value="viernes">Viernes</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="column">
+                        <div class="field">
+                          <label class="label">Hora:</label>
+                          <input
+                            class="input"
+                            type="time"
+                            id="horaEnvio"
+                            value="09:00"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="box has-background-light">
+                  <h3 class="subtitle is-5">👥 Destinatarios</h3>
+
+                  <div class="tabs is-toggle is-fullwidth is-small mb-3">
+                    <ul>
+                      <li class="is-active" id="tab-masivo">
+                        <a onclick="setModo('masivo')">
+                          <span class="icon is-small"
+                            ><i class="fas fa-filter"></i
+                          ></span>
+                          <span>Filtros Masivos</span>
+                        </a>
+                      </li>
+                      <li id="tab-individual">
+                        <a onclick="setModo('individual')">
+                          <span class="icon is-small"
+                            ><i class="fas fa-user"></i
+                          ></span>
+                          <span>Selección Manual</span>
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <input type="hidden" id="modoDestinatarios" value="masivo" />
+
+                  <div id="panelMasivo">
+                    <div class="columns">
+                      <div class="column is-6">
+                        <div class="field">
+                          <label class="label">Estado del Cliente:</label>
+                          <div class="control">
+                            <div class="select is-fullwidth">
+                              <select
+                                id="filtroEstado"
+                                onchange="updateContactCount()"
+                              >
+                                <option value="TODOS">
+                                  👥 Todos (Paga e Impaga)
+                                </option>
+                                <option value="IMPAGA" selected>
+                                  🔴 Solo Deudores (IMPAGA)
+                                </option>
+                                <option value="PAGA">
+                                  🟢 Solo Al Día (PAGA)
+                                </option>
+                              </select>
+                            </div>
+                          </div>
+                          <p class="help">Usa "Solo Deudores" para cobrar.</p>
+                        </div>
+                      </div>
+
+                      <div class="column is-6">
+                        <div class="field">
+                          <label class="label">Ciudad:</label>
+                          <div class="control">
+                            <div class="select is-fullwidth">
+                              <select
+                                id="filtroCiudad"
+                                onchange="updateContactCount()"
+                              >
+                                <option value="TODAS">
+                                  🌎 Todas las ciudades
+                                </option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div id="panelIndividual" style="display: none">
+                    <div class="field">
+                      <label class="label">Buscar contacto:</label>
+                      <div class="control" style="position: relative">
+                        <input
+                          class="input"
+                          type="text"
+                          id="buscarContacto"
+                          placeholder="Escribe nombre o número..."
+                          oninput="buscarContactos()"
+                        />
+                        <div
+                          id="autocompleteDropdown"
+                          class="autocomplete-dropdown"
+                          style="display: none"
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div
+                      id="contactosSeleccionadosBox"
+                      style="display: none"
+                      class="mb-3"
+                    >
+                      <label class="label is-small">Seleccionados:</label>
+                      <div id="listaSeleccionados"></div>
+                    </div>
+                  </div>
+
+                  <div class="notification is-primary is-light mt-3">
+                    <div class="level is-mobile">
+                      <div class="level-left">
+                        <div class="level-item">
+                          <p>
+                            <strong>Se enviará a:</strong>
+                            <span
+                              class="tag is-primary is-large"
+                              id="totalContactos"
+                              >0</span
+                            >
+                            personas
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="box has-background-light">
+                  <h3 class="subtitle is-5">💬 Mensaje</h3>
+
+                  <div class="field">
+                    <label class="label">Plantilla:</label>
+                    <div class="control">
+                      <div class="select is-fullwidth">
+                        <select id="plantillaSelect" onchange="loadPlantilla()">
+                          <option value="">
+                            -- Selecciona una plantilla --
+                          </option>
+                          <option value="custom">
+                            ✏️ Mensaje Personalizado
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label class="label">Mensaje:</label>
+                    <div class="control">
+                      <textarea
+                        class="textarea"
+                        id="mensajeTexto"
+                        rows="6"
+                        placeholder="Variables: {nombre}, {monto}, {fecha}"
+                      ></textarea>
+                    </div>
+                    <p class="help">
+                      <span id="charCount">0</span> / 1000 caracteres
+                    </p>
+                  </div>
+
+                  <div class="notification is-info is-light">
+                    <p class="subtitle is-6 mb-2">Vista previa:</p>
+                    <div id="vistaPrevia"><em>Escribe un mensaje...</em></div>
+                  </div>
+                </div>
+
+                <button
+                  class="button is-primary is-large is-fullwidth"
+                  onclick="guardarRecordatorio()"
+                >
+                  💾 Guardar Recordatorio
+                </button>
+              </div>
+            </div>
+
+            <div class="column is-4">
+              <div class="box has-background-info-light">
+                <h3 class="title is-5">💡 Ayuda</h3>
+                <div class="content">
+                  <p><strong>Variables disponibles:</strong></p>
+                  <ul>
+                    <li><code>{nombre}</code> - Nombre del cliente</li>
+                    <li><code>{monto}</code> - Monto de deuda</li>
+                    <li><code>{fecha}</code> - Fecha de vencimiento</li>
+                  </ul>
+                  <p>
+                    <strong>Modo Prueba:</strong> Envía hoy a la hora que
+                    elijas.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-plantillas" class="tab-content" style="display: none">
+          <div class="columns">
+            <div class="column is-7">
+              <div class="box">
+                <h2 class="title is-4" id="plantillaFormTitle">
+                  Nueva Plantilla
+                </h2>
+                <input type="hidden" id="plantillaEditId" />
+
+                <div class="field">
+                  <label class="label">Nombre de la plantilla:</label>
+                  <div class="control">
+                    <input
+                      class="input"
+                      type="text"
+                      id="plantillaNombre"
+                      placeholder="ej: Cobranza Suave"
+                    />
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label class="label">Mensaje:</label>
+                  <div class="control">
+                    <textarea
+                      class="textarea"
+                      id="plantillaMensaje"
+                      rows="6"
+                    ></textarea>
+                  </div>
+                </div>
+
+                <div class="field is-grouped">
+                  <div class="control">
+                    <button
+                      class="button is-primary"
+                      onclick="guardarPlantilla()"
+                    >
+                      💾 Guardar
+                    </button>
+                  </div>
+                  <div class="control">
+                    <button class="button" onclick="cancelarEditPlantilla()">
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="column is-5">
+              <div class="box">
+                <h2 class="title is-4">Mis Plantillas</h2>
+                <div id="listaPlantillas"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-programados" class="tab-content" style="display: none">
+          <div class="box">
+            <div class="level">
+              <div class="level-left">
+                <h2 class="title is-4">📅 Recordatorios Activos</h2>
+              </div>
+              <div class="level-right">
+                <button class="button is-info" onclick="cargarRecordatorios()">
+                  🔄 Actualizar
+                </button>
+              </div>
+            </div>
+            <div id="listaRecordatorios"></div>
+          </div>
+        </div>
+
+        <div id="tab-historial" class="tab-content" style="display: none">
+          <div class="box">
+            <h2 class="title is-4">📊 Historial de Envíos</h2>
+            <div class="table-container">
+              <table class="table is-fullwidth is-striped">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Destinatarios</th>
+                    <th>Enviados</th>
+                    <th>Fallidos</th>
+                  </tr>
+                </thead>
+                <tbody id="historialBody">
+                  <tr>
+                    <td colspan="5" class="has-text-centered">
+                      No hay historial
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="modal" id="confirmModal">
+      <div class="modal-background" onclick="closeModal()"></div>
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">⚠️ Confirmar</p>
+          <button class="delete" onclick="closeModal()"></button>
+        </header>
+        <section class="modal-card-body">
+          <div id="confirmContent"></div>
+        </section>
+        <footer class="modal-card-foot">
+          <button class="button is-success" onclick="confirmarGuardado()">
+            Guardar
+          </button>
+          <button class="button" onclick="closeModal()">Cancelar</button>
+        </footer>
+      </div>
+    </div>
+
+    <script>
+      // ==========================================
+      // ✅ VARIABLES GLOBALES
+      // ==========================================
+      let contactsData = { ciudades: [], contactos: [] };
+      let instanceFromUrl = null;
+      let plantillas = [];
+      let contactosSeleccionadosArray = [];
+      let modoActual = "masivo";
+
+      const descripciones = {
+        prueba:
+          "⚡ Envía un mensaje HOY a la hora que elijas (Ideal para avisos de mantenimiento o pruebas).",
+        revision:
+          "📅 Programar recordatorio para la fecha de vencimiento de la factura.",
+        aniversario: "⚠️ Programar aviso antes del corte del servicio.",
+        semanal: "📢 Envía promociones o info de One Pay cada semana.",
+        mensual:
+          "📅 Aviso automático mensual cuando se genera la nueva factura.",
+        cumpleanos: "🎂 Saludo de cumpleaños (Opcional).",
+      };
+
+      // ==========================================
+      // ✅ INICIO (ONLOAD)
+      // ==========================================
+      window.onload = async function () {
+        if (localStorage.getItem("theme") === "dark") {
+          document.getElementById("theme-toggle").innerHTML = "☀️ Modo Claro";
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        instanceFromUrl = urlParams.get("instance");
+
+        // Hora default prueba
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 1);
+        document.getElementById("horaPrueba").value = now
+          .toTimeString()
+          .substring(0, 5);
+
+        // 🔥 CARGAR INFO USUARIO Y DATOS SEGUROS
+        await safeFetch('/api/me'); 
+        loadUserInfo();
+        loadInstances();
+        loadContacts();
+        cargarPlantillas();
+        cargarRecordatorios();
+        // cargarHistorial(); // Se carga cuando das clic en la pestaña
+
+        document
+          .getElementById("mensajeTexto")
+          .addEventListener("input", updatePreview);
+
+        document
+          .getElementById("buscarContacto")
+          .addEventListener("blur", () => {
+            setTimeout(
+              () =>
+                (document.getElementById("autocompleteDropdown").style.display =
+                  "none"),
+              200
+            );
+          });
+      };
+
+      // ==========================================
+      // 🔐 SEGURIDAD (SAFE FETCH)
+      // ==========================================
+      async function safeFetch(url, options = {}) {
+        try {
+            const response = await fetch(url, options);
+            if (response.status === 401) {
+                window.location.href = '/login.html';
+                return null;
+            }
+            return response;
+        } catch (error) {
+            console.error("Fetch Error:", error);
+            throw error;
+        }
+      }
+
+      // ==========================================
+      // 👤 CARGAR INFO USUARIO
+      // ==========================================
+      async function loadUserInfo() {
+        try {
+            const res = await safeFetch('/api/me');
+            if(res && res.ok) {
+                const user = await res.json();
+                const cleanName = user.name || user.email.split('@')[0];
+                document.getElementById('userNameDisplay').textContent = cleanName;
+            }
+        } catch(e) {}
+      }
+
+      // ==========================================
+      // ✅ LÓGICA DE PESTAÑAS
+      // ==========================================
+      function setModo(modo) {
+        modoActual = modo;
+        document.getElementById("modoDestinatarios").value = modo;
+        document
+          .getElementById("tab-masivo")
+          .classList.toggle("is-active", modo === "masivo");
+        document
+          .getElementById("tab-individual")
+          .classList.toggle("is-active", modo === "individual");
+        document.getElementById("panelMasivo").style.display =
+          modo === "masivo" ? "block" : "none";
+        document.getElementById("panelIndividual").style.display =
+          modo === "individual" ? "block" : "none";
+        updateContactCount();
+      }
+
+      function changeTab(tabName) {
+        document
+          .querySelectorAll(".tab-content")
+          .forEach((tab) => (tab.style.display = "none"));
+        document
+          .querySelectorAll(".tabs li")
+          .forEach((li) => li.classList.remove("is-active"));
+        document.getElementById(`tab-${tabName}`).style.display = "block";
+        document
+          .querySelector(`[data-tab="${tabName}"]`)
+          .classList.add("is-active");
+
+        if (tabName === "plantillas") cargarPlantillas();
+        if (tabName === "programados") cargarRecordatorios();
+        if (tabName === "historial") cargarHistorial(); // <--- ¡ESTO FALTABA!
+      }
+
+      // ==========================================
+      // ✅ CARGA DE DATOS (INSTANCIAS Y CONTACTOS)
+      // ==========================================
+      async function loadInstances() {
+        const select = document.getElementById("instanceSelect");
+        const box = document.getElementById("instanceBox");
+        if (instanceFromUrl) {
+          box.style.display = "none";
+          select.innerHTML = `<option value="${instanceFromUrl}" selected>${instanceFromUrl}</option>`;
+          return;
+        }
+        try {
+          const res = await safeFetch("/api/get-instances");
+          if(!res) return;
+          const instances = await res.json();
+          select.innerHTML = '<option value="">Selecciona...</option>';
+          instances.forEach((inst) => {
+            const data = inst.instance || inst;
+            if ((data.connectionStatus || data.status) === "open") {
+              const opt = document.createElement("option");
+              opt.value = data.instanceName || data.name;
+              opt.textContent = data.instanceName || data.name;
+              select.appendChild(opt);
+            }
+          });
+        } catch (e) {
+          select.innerHTML = '<option value="">Error</option>';
+        }
+      }
+
+      async function loadContacts() {
+        try {
+          const res = await safeFetch("/api/contacts");
+          if(!res) return;
+          contactsData = await res.json();
+          const ciudadSelect = document.getElementById("filtroCiudad");
+          ciudadSelect.innerHTML =
+            '<option value="TODAS">🌎 Todas las ciudades</option>';
+          const ciudadesReales = [
+            ...new Set(
+              contactsData.contactos.map((c) => c.ciudad || "Sin Ciudad")
+            ),
+          ].sort();
+          ciudadesReales.forEach((c) => {
+            if (c && c !== "Sin Ciudad") {
+              const opt = document.createElement("option");
+              opt.value = c;
+              opt.textContent = c;
+              ciudadSelect.appendChild(opt);
+            }
+          });
+          updateContactCount();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // ==========================================
+      // ✅ LÓGICA DE FILTROS
+      // ==========================================
+      function updateContactCount() {
+        let count = 0;
+        if (modoActual === "individual") {
+          count = contactosSeleccionadosArray.length;
+        } else {
+          const estadoFiltro = document.getElementById("filtroEstado").value;
+          const ciudadFiltro = document.getElementById("filtroCiudad").value;
+          const filtrados = contactsData.contactos.filter((c) => {
+            const pasaCiudad =
+              ciudadFiltro === "TODAS" || c.ciudad === ciudadFiltro;
+            const estadoContacto =
+              c.etiquetas && c.etiquetas[0] ? c.etiquetas[0] : "IMPAGA";
+            let pasaEstado = true;
+            if (estadoFiltro !== "TODOS")
+              pasaEstado = estadoContacto === estadoFiltro;
+            return pasaCiudad && pasaEstado;
+          });
+          count = filtrados.length;
+          window.contactosFiltradosMasivos = filtrados;
+        }
+        document.getElementById("totalContactos").textContent = count;
+      }
+
+      function buscarContactos() {
+        const input = document
+          .getElementById("buscarContacto")
+          .value.toLowerCase();
+        const dropdown = document.getElementById("autocompleteDropdown");
+        if (input.length < 2) {
+          dropdown.style.display = "none";
+          return;
+        }
+        const resultados = contactsData.contactos
+          .filter(
+            (c) =>
+              c.nombre.toLowerCase().includes(input) ||
+              c.telefono.includes(input)
+          )
+          .slice(0, 5);
+        if (resultados.length === 0) {
+          dropdown.style.display = "none";
+          return;
+        }
+        dropdown.innerHTML = resultados
+          .map(
+            (c) => `
+            <div class="autocomplete-item" onclick="seleccionarContacto('${c.id}')">
+            <strong>${c.nombre}</strong><br><small>+${c.telefono} - ${c.ciudad}</small></div>`
+          )
+          .join("");
+        dropdown.style.display = "block";
+      }
+
+      function seleccionarContacto(id) {
+        const contacto = contactsData.contactos.find((c) => c.id === id);
+        if (!contacto || contactosSeleccionadosArray.find((c) => c.id === id))
+          return;
+        contactosSeleccionadosArray.push(contacto);
+        document.getElementById("buscarContacto").value = "";
+        document.getElementById("autocompleteDropdown").style.display = "none";
+        renderContactosSeleccionados();
+        updateContactCount();
+      }
+
+      function renderContactosSeleccionados() {
+        const container = document.getElementById("listaSeleccionados");
+        const box = document.getElementById("contactosSeleccionadosBox");
+        if (contactosSeleccionadosArray.length === 0) {
+          box.style.display = "none";
+          return;
+        }
+        box.style.display = "block";
+        container.innerHTML = contactosSeleccionadosArray
+          .map(
+            (c) => `
+            <span class="selected-contact">${c.nombre} <button class="delete is-small" onclick="removerContacto('${c.id}')"></button></span>`
+          )
+          .join("");
+      }
+
+      function removerContacto(id) {
+        contactosSeleccionadosArray = contactosSeleccionadosArray.filter(
+          (c) => c.id !== id
+        );
+        renderContactosSeleccionados();
+        updateContactCount();
+      }
+
+      // ==========================================
+      // ✅ FORMULARIO Y GUARDADO
+      // ==========================================
+      function updateForm() {
+        const tipo = document.getElementById("tipoRecordatorio").value;
+        if (!tipo) {
+          document.getElementById("descripcionTipo").style.display = "none";
+          document.getElementById("configuracionTemporal").style.display =
+            "none";
+          return;
+        }
+        document.getElementById("descripcionTipo").style.display = "block";
+        document.getElementById("descripcionTexto").textContent =
+          descripciones[tipo];
+        document.getElementById("configuracionTemporal").style.display =
+          "block";
+        document.getElementById("config-prueba").style.display = "none";
+        document.getElementById("config-fecha").style.display = "none";
+        document.getElementById("config-recurrente").style.display = "none";
+
+        if (tipo === "prueba")
+          document.getElementById("config-prueba").style.display = "block";
+        else if (["cumpleanos", "aniversario", "revision"].includes(tipo))
+          document.getElementById("config-fecha").style.display = "block";
+        else if (["semanal", "mensual"].includes(tipo))
+          document.getElementById("config-recurrente").style.display = "block";
+      }
+
+      async function guardarRecordatorio() {
+        const tipo = document.getElementById("tipoRecordatorio").value;
+        const instance = document.getElementById("instanceSelect").value;
+        const mensaje = document.getElementById("mensajeTexto").value.trim();
+
+        if (!tipo || !instance || !mensaje) {
+          alert("Completa todos los campos");
+          return;
+        }
+
+        let destinatariosFinales = [];
+        if (modoActual === "individual") {
+          if (contactosSeleccionadosArray.length === 0) {
+            alert("Selecciona al menos un contacto");
+            return;
+          }
+          destinatariosFinales = contactosSeleccionadosArray;
+        } else {
+          if (
+            !window.contactosFiltradosMasivos ||
+            window.contactosFiltradosMasivos.length === 0
+          ) {
+            alert("Tus filtros no coinciden con ningún contacto.");
+            return;
+          }
+          destinatariosFinales = window.contactosFiltradosMasivos;
+        }
+
+        const listaParaEnviar = destinatariosFinales.map((c) => ({
+          id: c.id,
+          nombre: c.nombre,
+          telefono: c.telefono,
+          ciudad: c.ciudad,
+          monto: c.monto,
+          fecha: c.fechaNacimiento,
+        }));
+
+        let config = {
+          tipo,
+          instanceName: instance,
+          mensaje,
+          modoDestinatarios: "individual",
+          destinatarios: listaParaEnviar,
+          ciudades: [],
+        };
+
+        if (tipo === "prueba") {
+          const hora = document.getElementById("horaPrueba").value;
+          if (!hora) {
+            alert("Selecciona hora");
+            return;
+          }
+          const hoy = new Date();
+          const [h, m] = hora.split(":");
+          hoy.setHours(parseInt(h), parseInt(m), 0, 0);
+          config.fechaHoraEnvio = hoy.toISOString();
+        } else if (["cumpleanos", "aniversario", "revision"].includes(tipo)) {
+          config.diasAnticipacion =
+            parseInt(document.getElementById("diasAnticipacion").value) || 0;
+        } else if (["semanal", "mensual"].includes(tipo)) {
+          config.diaEnvio = document.getElementById("diaEnvio").value;
+          config.horaEnvio = document.getElementById("horaEnvio").value;
+        }
+
+        document.getElementById("confirmContent").innerHTML = `
+        <p><strong>Tipo:</strong> ${tipo}</p>
+        <p><strong>Destinatarios:</strong> ${listaParaEnviar.length} personas</p>
+        <div class="box has-background-light mt-3"><p style="white-space: pre-wrap;">${mensaje}</p></div>`;
+
+        window.recordatorioTemporal = config;
+        document.getElementById("confirmModal").classList.add("is-active");
+      }
+
+      async function confirmarGuardado() {
+        const config = window.recordatorioTemporal;
+        try {
+          const res = await safeFetch("/api/recordatorios", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(config),
+          });
+          if(!res) return;
+          if (!res.ok) throw new Error("Error al guardar");
+          closeModal();
+          showNotification("✅ Recordatorio guardado");
+          contactosSeleccionadosArray = [];
+          renderContactosSeleccionados();
+          changeTab("programados");
+        } catch (e) {
+          alert("Error: " + e.message);
+        }
+      }
+
+      // ==========================================
+      // ✅ PLANTILLAS
+      // ==========================================
+      async function cargarPlantillas() {
+        try {
+          const res = await safeFetch("/api/recordatorios/plantillas");
+          if(!res) return;
+          plantillas = await res.json();
+          const select = document.getElementById("plantillaSelect");
+          select.innerHTML =
+            '<option value="">-- Selecciona --</option><option value="custom">✏️ Personalizado</option>';
+          plantillas.forEach((p) => {
+            select.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
+          });
+          document.getElementById("countPlantillas").textContent =
+            plantillas.length;
+          renderPlantillas();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      function renderPlantillas() {
+        const lista = document.getElementById("listaPlantillas");
+        if (plantillas.length === 0) {
+          lista.innerHTML =
+            '<p class="has-text-centered">No hay plantillas</p>';
+          return;
+        }
+        lista.innerHTML = plantillas
+          .map(
+            (p) => `
+            <div class="box"><p class="title is-6">${p.nombre}</p>
+            <p class="is-size-7">${p.mensaje.substring(0, 100)}...</p>
+            <div class="buttons mt-2"><button class="button is-small is-info" onclick="editarPlantilla('${
+              p.id
+            }')">Editar</button>
+            <button class="button is-small is-danger" onclick="eliminarPlantilla('${
+              p.id
+            }')">Eliminar</button></div></div>`
+          )
+          .join("");
+      }
+
+      async function guardarPlantilla() {
+        const nombre = document.getElementById("plantillaNombre").value.trim();
+        const mensaje = document
+          .getElementById("plantillaMensaje")
+          .value.trim();
+        const editId = document.getElementById("plantillaEditId").value;
+        if (!nombre || !mensaje) {
+          alert("Completa campos");
+          return;
+        }
+        try {
+          const url = editId
+            ? `/api/recordatorios/plantillas/${editId}`
+            : "/api/recordatorios/plantillas";
+          const method = editId ? "PUT" : "POST";
+          const res = await safeFetch(url, {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nombre, mensaje }),
+          });
+          if(!res) return;
+          cancelarEditPlantilla();
+          cargarPlantillas();
+          showNotification("✅ Guardado");
+        } catch (e) {
+          alert("Error");
+        }
+      }
+
+      function editarPlantilla(id) {
+        const p = plantillas.find((pl) => pl.id === id);
+        if (!p) return;
+        document.getElementById("plantillaFormTitle").textContent =
+          "Editar Plantilla";
+        document.getElementById("plantillaEditId").value = id;
+        document.getElementById("plantillaNombre").value = p.nombre;
+        document.getElementById("plantillaMensaje").value = p.mensaje;
+        changeTab("plantillas");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function cancelarEditPlantilla() {
+        document.getElementById("plantillaFormTitle").textContent =
+          "Nueva Plantilla";
+        document.getElementById("plantillaEditId").value = "";
+        document.getElementById("plantillaNombre").value = "";
+        document.getElementById("plantillaMensaje").value = "";
+      }
+
+      async function eliminarPlantilla(id) {
+        if (!confirm("¿Eliminar?")) return;
+        await safeFetch(`/api/recordatorios/plantillas/${id}`, {
+          method: "DELETE",
+        });
+        cargarPlantillas();
+      }
+
+      function loadPlantilla() {
+        const val = document.getElementById("plantillaSelect").value;
+        const txt = document.getElementById("mensajeTexto");
+        if (!val || val === "custom") txt.value = "";
+        else {
+          const p = plantillas.find((pl) => pl.id === val);
+          if (p) txt.value = p.mensaje;
+        }
+        updatePreview();
+      }
+
+      function updatePreview() {
+        const texto = document.getElementById("mensajeTexto").value;
+        document.getElementById("charCount").textContent = texto.length;
+        const preview = document.getElementById("vistaPrevia");
+        if (texto.trim()) {
+          const ejemplo = texto
+            .replace(/{nombre}/g, "<strong>Juan Pérez</strong>")
+            .replace(/{ciudad}/g, "<strong>Bogotá</strong>")
+            .replace(/{fecha}/g, "<strong>30/11/2025</strong>")
+            .replace(/{monto}/g, "<strong>50.000</strong>");
+          preview.innerHTML = ejemplo.replace(/\n/g, "<br>");
+        } else preview.innerHTML = "<em>Escribe un mensaje...</em>";
+      }
+
+      // ==========================================
+      // ✅ PROGRAMADOS Y ACCIONES
+      // ==========================================
+      async function cargarRecordatorios() {
+        try {
+          const res = await safeFetch("/api/recordatorios");
+          if(!res) return;
+          const recs = await res.json();
+
+          // Filtrar: Mostrar TODOS los activos. Los inactivos (como pruebas ya enviadas) no se muestran aquí
+          // O puedes mostrarlos pero separados. Lo usual es mostrar los que están pendientes.
+          const activos = recs.filter((r) => r.activo === true);
+
+          document.getElementById("countProgramados").textContent =
+            activos.length;
+          const lista = document.getElementById("listaRecordatorios");
+
+          if (activos.length === 0) {
+            lista.innerHTML =
+              '<div class="notification is-warning">No hay recordatorios pendientes</div>';
+            return;
+          }
+
+          lista.innerHTML = activos
+            .map((r) => {
+              const fecha = r.proximoEnvio
+                ? new Date(r.proximoEnvio).toLocaleString("es-ES")
+                : "Pendiente";
+              const statusClass = r.activo ? "is-success" : "is-danger";
+              return `<div class="box"><div class="columns is-vcentered"><div class="column">
+              <p class="title is-5">${
+                r.tipo
+              }</p><p class="subtitle is-6">📅 Próximo: ${fecha}</p>
+              <p class="is-size-7">👥 Destinatarios: ${
+                r.totalDestinatarios || 0
+              }</p></div>
+              <div class="column is-narrow"><span class="tag ${statusClass}">${
+                r.activo ? "Activo" : "Inactivo"
+              }</span>
+              <div class="buttons mt-2"><button class="button is-small is-warning" onclick="toggleRecordatorio('${
+                r.id
+              }')">
+              ${
+                r.activo ? "Pausar" : "Activar"
+              }</button><button class="button is-small is-danger" onclick="eliminarRecordatorio('${
+                r.id
+              }')">Eliminar</button>
+              </div></div></div><div class="content"><p class="is-size-7">${r.mensaje.substring(
+                0,
+                100
+              )}...</p></div></div>`;
+            })
+            .join("");
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      async function toggleRecordatorio(id) {
+        await safeFetch(`/api/recordatorios/${id}/toggle`, { method: "PATCH" });
+        cargarRecordatorios();
+      }
+      async function eliminarRecordatorio(id) {
+        if (!confirm("¿Eliminar?")) return;
+        await safeFetch(`/api/recordatorios/${id}`, { method: "DELETE" });
+        cargarRecordatorios();
+      }
+
+      // ==========================================
+      // ✅ NUEVA LÓGICA DE HISTORIAL (LA SOLUCIÓN)
+      // ==========================================
+      async function cargarHistorial() {
+        try {
+          const res = await safeFetch("/api/recordatorios");
+          if(!res) return;
+          const recs = await res.json();
+          const tbody = document.getElementById("historialBody");
+          tbody.innerHTML = "";
+
+          let logs = [];
+
+          // Extraer logs de todos los recordatorios
+          recs.forEach((r) => {
+            if (r.historial && r.historial.length > 0) {
+              r.historial.forEach((h) => {
+                logs.push({
+                  fecha: h.fecha,
+                  tipo: r.tipo,
+                  destinatarios: h.destinatarios || 0,
+                  enviados: h.enviados || 0,
+                  fallidos: h.fallidos || 0,
+                });
+              });
+            }
+          });
+
+          // Ordenar por fecha (el más reciente primero)
+          logs.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+          if (logs.length === 0) {
+            tbody.innerHTML =
+              '<tr><td colspan="5" class="has-text-centered">No hay historial de envíos</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = logs
+            .map(
+              (log) => `
+                <tr>
+                    <td>${new Date(log.fecha).toLocaleString("es-ES")}</td>
+                    <td><span class="tag is-light">${log.tipo}</span></td>
+                    <td>${log.destinatarios}</td>
+                    <td class="has-text-success">${log.enviados} ✅</td>
+                    <td class="has-text-danger">${log.fallidos} ❌</td>
+                </tr>
+            `
+            )
+            .join("");
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      function closeModal() {
+        document.getElementById("confirmModal").classList.remove("is-active");
+      }
+      function toggleDarkMode() {
+        const html = document.documentElement;
+        const next =
+          html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        html.setAttribute("data-theme", next);
+        localStorage.setItem("theme", next);
+        document.getElementById("theme-toggle").innerHTML =
+          next === "dark" ? "☀️ Modo Claro" : "🌙 Modo Oscuro";
+      }
+      function showNotification(msg) {
+        const n = document.createElement("div");
+        n.className = "notification is-success";
+        n.style.cssText =
+          "position: fixed; top: 20px; right: 20px; z-index: 9999;";
+        n.innerHTML = `<button class="delete" onclick="this.parentElement.remove()"></button>${msg}`;
+        document.body.appendChild(n);
+        setTimeout(() => n.remove(), 3000);
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "plantillas": [
+    {
+      "id": "plt_isp_1",
+      "nombre": "⭐ Promo One Pay",
+      "mensaje": "Estimado(a) {nombre}\n\n*One Pay* llego a *Xtreme Networks* y es nuestro nuevo aliado de recaudo.💲🤩\n\nPaga tu factura de manera fácil sin salir de WhatsApp 💬🟢\n\n*One Pay* te enviará un mensaje💬 con el valor de tu factura 🧾, para que realices el pago💰 directamente a nosotros en cualquier horario y te conectes🔌 de forma inmediata. 🛜\n\nSolo debes seguir⏭️ los pasos👣, registrar tus datos y realizar tu pago💰 de forma segura🔒.",
+      "fechaCreacion": "2025-11-18T09:00:00.000Z",
+      "fechaModificacion": "2025-11-18T11:55:22.088Z"
+    },
+    {
+      "id": "plt_isp_2",
+      "nombre": "📄 Factura Generada",
+      "mensaje": "¡Hola {nombre}! 👋\n\nSu Factura ha sido generada por valor de ${monto} y vence el {fecha}.\n\nHa sido enviada vía correo electrónico, en caso de no haberla recibido lo invitamos a actualizar su información de contacto.\n\nAgradecemos mucho enviar su comprobante de transferencia por este medio.\n\nSi usted ya ha realizado su pago, omita este mensaje.\n\n*Este es un mensaje automático de Xtreme Networks.*",
+      "fechaCreacion": "2025-11-18T09:00:00.000Z"
+    },
+    {
+      "id": "plt_isp_3",
+      "nombre": "⚠️ Pago Pendiente",
+      "mensaje": "¡Estimado usuario {nombre}!: Lo invitamos a ponerse al día con el pago de sus facturas pendientes.\n\nTotal a pagar: ${monto}\n\nEvite reporte negativo en las Centrales de Riesgo.\n\nCordialmente,\n𝙓𝙏𝙍𝙀𝙈𝙀 𝙉𝙀𝙏𝙒𝙊𝙍𝙆𝙎\nSu Proveedor de Internet",
+      "fechaCreacion": "2025-11-18T09:00:00.000Z"
+    },
+    {
+      "id": "plt_isp_4",
+      "nombre": "⏰ Vence Mañana",
+      "mensaje": "¡Hola {nombre}! Te recordamos que tu factura vence mañana.\n\nHaz tu pago de manera fácil, Dile SI a seguir disfrutando tu plan y evita ser suspendido.\n\nSi ya realizaste el pago omite este mensaje.\n(Este es un mensaje automático de Xtreme Networks)",
+      "fechaCreacion": "2025-11-18T09:00:00.000Z"
+    },
+    {
+      "id": "plt_isp_5",
+      "nombre": "🎁 Sorteo Mensual",
+      "mensaje": "¡Hola {nombre}!\n\nSu Factura ha sido generada por valor de ${monto} y vence el {fecha}.\n\n*PAGA TU FACTURA ANTES DE FINALIZAR EL MES Y PARTICIPA POR UN MINI PARLANTE PREMIUM* -SORTEOS MENSUALES-!! 🎶\n\nAtentamente,\nXtreme Networks.",
+      "fechaCreacion": "2025-11-18T09:00:00.000Z"
+    },
+    {
+      "id": "plt_isp_6",
+      "nombre": "🚨 Alerta 2do Vencimiento",
+      "mensaje": "Hola {nombre}, Recuerda que la fecha máxima de pago de tu factura es el *{fecha}*.\n\nSi ya realizaste el pago omite este mensaje.\n\n(Este es un mensaje automático de Xtreme Networks)",
+      "fechaCreacion": "2025-11-18T09:00:00.000Z"
+    }
+  ]
+}

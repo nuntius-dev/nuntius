@@ -1,0 +1,138 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  /* Esta fuente es la que tenías. Sobrescribirá la de Bulma. */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Este es tu fondo degradado. ¡Esencial! */
+  background: linear-gradient(135deg, #302b63 0%, #24243e 100%);
+  min-height: 100vh;
+
+  /* El 'padding' se eliminó porque ahora lo maneja la <section class="section"> de Bulma */
+}
+
+/* Todas las clases personalizadas (.logo, .btn, .instance-card, .status-badge, .profile-modal, etc.) 
+  han sido eliminadas porque ahora usas las clases de Bulma (.title, .button, .box, .tag, .modal, etc.)
+*/
+
+/* Estilos para IDs (Estos se quedan porque siguen existiendo en el HTML) */
+#qrcode {
+  text-align: center;
+  margin: 2rem 0;
+}
+
+#timer {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 1rem 0;
+  color: #333;
+}
+
+#connectionStatus {
+  text-align: center;
+  margin: 1rem 0;
+}
+
+/* Esto corrige el Error #1:
+      Permite que los botones del footer (pies de la card) 
+      pasen a la siguiente línea si no hay espacio, en vez de romperse.
+    */
+.card-footer {
+  flex-wrap: wrap;
+}
+
+.card-footer-item {
+  flex-basis: 120px;
+  /* Dales un ancho mínimo */
+  flex-grow: 1;
+}
+
+/* =========================================== */
+/* (NUEVO) FIX PARA MODAL EN MODO OSCURO       */
+/* =========================================== */
+
+/* 1. Pone el fondo del modal oscuro */
+html[data-theme="dark"] .modal-card-head,
+html[data-theme="dark"] .modal-card-body {
+  background-color: hsl(0, 0%, 21%);
+  /* Color 'grey-darker' de Bulma */
+  border-color: hsl(0, 0%, 29%);
+}
+
+/* 2. Pone el texto del título y del cuerpo en color claro */
+html[data-theme="dark"] .modal-card-head .modal-card-title,
+html[data-theme="dark"] .modal-card-body {
+  color: hsl(0, 0%, 96%);
+  /* Color 'grey-lighter' de Bulma */
+}
+
+/* 3. Asegura que los títulos y subtítulos DENTRO del modal sean claros */
+html[data-theme="dark"] .modal-card-body .title,
+html[data-theme="dark"] .modal-card-body .subtitle,
+html[data-theme="dark"] .modal-card-body .heading {
+  color: hsl(0, 0%, 96%);
+  /* Texto claro */
+}
+
+/* 4. Arregla las notificaciones '.is-light' DENTRO del modal oscuro */
+html[data-theme="dark"] .modal-card-body .notification.is-light {
+  /* En modo oscuro, .is-light debe ser .is-dark */
+  background-color: hsl(0, 0%, 29%);
+  color: hsl(0, 0%, 96%);
+}
+
+/* =========================================== */
+/* FIX PARA MODO OSCURO (CAJAS Y TÍTULOS) v2   */
+/* =========================================== */
+
+/* 1. Arregla las cajas (cards, barra "Mis Instancias", etc.) */
+html[data-theme="dark"] .box {
+  background-color: hsl(0, 0%, 21%) !important;
+  color: hsl(0, 0%, 96%) !important;
+  border: 1px solid hsl(0, 0%, 29%);
+}
+
+/* 2. Arregla las cajas que eran 'light' (COMO LA QUE ME SEÑALASTE) */
+html[data-theme="dark"] .box.has-background-light {
+  background-color: lch(7 3.15 267.68) !important;
+  /* Más claro que el fondo */
+}
+
+/* 3. Arregla el color de los títulos dentro de las cajas oscuras */
+html[data-theme="dark"] .box .title,
+html[data-theme="dark"] .box .subtitle {
+  color: hsl(0, 0%, 96%) !important;
+}
+
+/* 4. Arregla los 'tags' de las cards (número, mensajes, etc.) */
+html[data-theme="dark"] .tag.is-light {
+  background-color: lch(7 3.15 267.68) !important;
+  color: hsl(0, 0%, 96%) !important;
+}
+/* =========================================== */
+/* Botón "Actualizar Lista" personalizado      */
+/* =========================================== */
+.button.is-custom-primary {
+  background-color: #4258ff;
+  border-color: transparent;
+  color: #ffffff; /* Texto en blanco para contraste */
+}
+
+/* Color al pasar el mouse (hover) */
+.button.is-custom-primary:hover {
+  background-color: #384bde; /* Un tono más oscuro */
+  border-color: transparent;
+  color: #ffffff;
+}
+
+/* Color al estar activo (focus) */
+.button.is-custom-primary:focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 0.125em rgba(66, 88, 255, 0.25); /* Sombra de foco */
+  color: #ffffff;
+}

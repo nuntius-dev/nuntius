@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tester: Crear Instancia</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@1.0.1/css/bulma.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <style>
+      /* Estilos para las notificaciones flotantes */
+      .floating-notification {
+        position: fixed;
+        top: 1.5rem;
+        right: 1.5rem;
+        z-index: 1002;
+        max-width: 400px;
+      }
+      /* (Opcional) Un poco de estilo para el modo oscuro */
+      [data-theme="dark"] {
+        --bulma-body-background-color: #1e1e1e;
+        --bulma-box-background-color: #2d2d2d;
+        --bulma-text: #ccc;
+        --bulma-text-strong: #fff;
+        --bulma-input-background-color: #3c3c3c;
+        --bulma-input-color: #ccc;
+        --bulma-border: #4a4a4a;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="section">
+      <div class="container">
+        <div class="box" style="max-width: 500px; margin: auto">
+          <h1 class="title">Tester: Crear Instancia</h1>
+          <p class="subtitle is-6">
+            Prueba del endpoint <code>POST /api/create-instance</code>
+          </p>
+          <div class="field">
+            <label class="label">Nombre de la Instancia</label>
+            <div class="control has-icons-left">
+              <input
+                class="input"
+                id="instanceName"
+                type="text"
+                placeholder="ej: instancia_prueba_123"
+              />
+              <span class="icon is-small is-left">
+                <i class="fas fa-server"></i>
+              </span>
+            </div>
+            <p class="help">Usa un nombre que no exista.</p>
+          </div>
+          <div class="field">
+            <div class="control">
+              <button
+                class="button is-primary"
+                id="createButton"
+                onclick="createInstance()"
+              >
+                <span class="icon"><i class="fas fa-plus"></i></span>
+                <span>Crear Instancia</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="qrSection" style="display: none">
+      <div class="container">
+        <div class="box" style="max-width: 500px; margin: auto">
+          <h2 class="title is-4">
+            Instancia Creada:
+            <span id="currentInstance" class="tag is-link is-medium"></span>
+          </h2>
+          <p>
+            ¡Éxito! La API devolvió un QR. Por favor, escanea para conectar:
+          </p>
+
+          <div
+            id="qrLoader"
+            style="padding: 2rem; text-align: center; display: none"
+          >
+            <progress class="progress is-large is-primary" max="100"></progress>
+            <p>Generando código QR...</p>
+          </div>
+
+          <div id="qrcode" class="has-text-centered mb-4"></div>
+
+          <div class="notification is-info is-light has-text-centered">
+            <p class="title is-6">
+              🔄 Nuevo código en: <strong id="timer">30s</strong>
+            </p>
+          </div>
+
+          <div id="connectionStatus" class="has-text-centered mt-4"></div>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      let currentInstanceName = "";
+      let timerInterval;
+      let checkInterval;
+      let timeLeft = 30;
+
+      // --- 1. FUNCIÓN PRINCIPAL DE ESTA PÁGINA ---
+
+      async function createInstance() {
+        // 1. Obtener datos y poner estado de carga
+        const input = document.getElementById("instanceName");
+        const button = document.getElementById("createButton");
+        const instanceName = input.value.trim();
+
+        if (!instanceName) {
+          showError("Ingresa un nombre de instancia.");
+          return;
+        }
+
+        button.classList.add("is-loading");
+        input.disabled = true;
+
+        try {
+          // 2. Llamar a la API para CREAR
+          const response = await fetch("/api/create-instance", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ instanceName: instanceName }),
+          });
+
+          // El backend (routes/instances.js) SIEMPRE devuelve JSON
+          const data = await response.json();
+
+          if (!response.ok) {
+            // Si la respuesta no fue 200, lanzamos el error
+            throw new Error(
+              data.error || data.message || "Error desconocido al crear"
+            );
+          }
+
+          // 3. Éxito: Mostrar la sección de QR
+          showSuccess(`¡Instancia "${instanceName}" creada!`);
+          document.getElementById("qrSection").style.display = "block";
+          document.getElementById("currentInstance").textContent = instanceName;
+          currentInstanceName = instanceName; // Settear variable global
+
+          // 4. Mostrar el QR que vino en la respuesta
+          const qrcodeElement = document.getElementById("qrcode");
+          if (data.base64) {
+            const base64Clean = data.base64.includes(",")
+              ? data.base64.split(",")[1]
+              : data.base64;
+            const imgSrc = `data:image/png;base64,${base64Clean}`;
+            qrcodeElement.innerHTML = `<figure class="image is-square" style="max-width: 300px; margin: 0 auto;"><img src="${imgSrc}" alt="Código QR"></figure>`;
+          } else {
+            // Si por alguna razón no vino un QR, lo pedimos
+            await fetchAndDisplayQRCode();
+          }
+
+          // 5. Iniciar los contadores y chequeos
+          clearInterval(timerInterval);
+          clearInterval(checkInterval);
+          timeLeft = 30;
+          updateTimer(); // Poner 30s
+          timerInterval = setInterval(updateTimer, 1000); // Iniciar countdown
+          startConnectionCheck(); // Iniciar polling
+        } catch (error) {
+          showError(`Error al crear: ${error.message}`);
+          input.disabled = false; // Permitir reintentar
+        } finally {
+          button.classList.remove("is-loading");
+        }
+      }
+
+      // --- 2. FUNCIONES COPIADAS DE index.html ---
+
+      // Pide un NUEVO QR (usado cuando el timer llega a 0)
+      async function generateQRCode() {
+        await fetchAndDisplayQRCode();
+
+        clearInterval(timerInterval);
+        clearInterval(checkInterval);
+        timeLeft = 30;
+        updateTimer();
+        timerInterval = setInterval(updateTimer, 1000);
+        startConnectionCheck();
+      }
+
+      // Función que realmente pide el QR a la API
+      async function fetchAndDisplayQRCode() {
+        const loader = document.getElementById("qrLoader");
+        const qrcodeElement = document.getElementById("qrcode");
+        const statusElement = document.getElementById("connectionStatus");
+
+        loader.style.display = "block";
+        qrcodeElement.innerHTML = "";
+        statusElement.innerHTML = "";
+
+        try {
+          const response = await fetch(
+            `/api/get-qr?instanceName=${currentInstanceName}`
+          );
+          const data = await response.json(); // Backend siempre da JSON
+
+          if (!response.ok) {
+            throw new Error(
+              data.details || data.error || "Error en respuesta del servidor"
+            );
+          }
+
+          if (data.instance && data.instance.state === "open") {
+            qrcodeElement.innerHTML =
+              '<div class="notification is-success">✅ ¡WhatsApp ya está conectado!</div>';
+            clearInterval(timerInterval);
+            clearInterval(checkInterval);
+            document.getElementById("timer").textContent = "¡Conectado!";
+            return;
+          }
+
+          if (data.base64) {
+            const base64Clean = data.base64.includes(",")
+              ? data.base64.split(",")[1]
+              : data.base64;
+            const imgSrc = `data:image/png;base64,${base64Clean}`;
+            qrcodeElement.innerHTML = `<figure class="image is-square" style="max-width: 300px; margin: 0 auto;"><img src="${imgSrc}" alt="Código QR"></figure>`;
+          } else {
+            qrcodeElement.innerHTML = `<div class="notification is-warning">⏳ ${
+              data.message || "Conectando... por favor espera."
+            }</div>`;
+          }
+        } catch (error) {
+          console.error("Error en fetchAndDisplayQRCode:", error.message);
+          qrcodeElement.innerHTML = `<div class="notification is-danger">❌ Error al cargar el código QR: ${error.message}</div>`;
+          clearInterval(timerInterval);
+        } finally {
+          loader.style.display = "none";
+        }
+      }
+
+      // Actualiza el contador
+      function updateTimer() {
+        const timerElement = document.getElementById("timer");
+        timerElement.textContent = `${timeLeft}s`;
+
+        if (timeLeft === 0) {
+          clearInterval(timerInterval);
+          generateQRCode(); // Pide un nuevo QR
+        } else {
+          timeLeft--;
+        }
+      }
+
+      // Verifica el estado de la conexión
+      function startConnectionCheck() {
+        checkInterval = setInterval(async () => {
+          try {
+            const response = await fetch(
+              `/api/check-status?instanceName=${currentInstanceName}`
+            );
+
+            if (!response.ok) throw new Error("Error al verificar conexión");
+
+            const data = await response.json();
+            const state = data.instance?.state || data.state;
+
+            if (state === "open") {
+              document.getElementById("qrcode").innerHTML =
+                '<div class="notification is-success">✅ ¡WhatsApp conectado exitosamente!</div>';
+              document.getElementById("connectionStatus").innerHTML =
+                '<div class="notification is-success">✅ Conexión establecida</div>';
+              document.getElementById("timer").innerHTML =
+                '<div class="notification is-success">🎉 ¡Listo!</div>';
+              clearInterval(checkInterval);
+              clearInterval(timerInterval);
+
+              // 🏠 REDIRIGIR AL HOME después de 2 segundos
+              setTimeout(() => {
+                window.location.href = "/";
+              }, 2000);
+            }
+          } catch (error) {
+            console.error("Error en verificación:", error);
+            // No hacer nada, solo seguir intentando
+          }
+        }, 3000);
+      }
+      // --- 3. FUNCIONES DE NOTIFICACIÓN (TOAST) ---
+
+      function showError(message) {
+        const id = "notif-" + Date.now();
+        const statusDiv = document.createElement("div");
+        statusDiv.className = "notification is-danger floating-notification";
+        statusDiv.id = id;
+        statusDiv.innerHTML = `<button class="delete" onclick="document.getElementById('${id}').remove()"></button>${message}`;
+        document.body.appendChild(statusDiv);
+        setTimeout(() => statusDiv.remove(), 8000);
+      }
+
+      function showSuccess(message) {
+        const id = "notif-" + Date.now();
+        const statusDiv = document.createElement("div");
+        statusDiv.className = "notification is-success floating-notification";
+        statusDiv.id = id;
+        statusDiv.innerHTML = `<button class="delete" onclick="document.getElementById('${id}').remove()"></button>${message}`;
+        document.body.appendChild(statusDiv);
+        setTimeout(() => statusDiv.remove(), 3000);
+      }
+    </script>
+  </body>
+</html>

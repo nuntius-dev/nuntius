@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestor de Instancias - Optimizado</title>
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@1.0.1/css/bulma.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+
+    <style>
+      /* ========================================
+       VARIABLES Y TEMA
+       ======================================== */
+      :root {
+        --primary-color: #667eea;
+        --bg-light: #f8f9fa;
+        --bg-dark: #1e1e1e;
+        --sidebar-dark: #252526;
+        --transition: 0.3s ease;
+
+        --new-sidebar-width: 80px;
+        --new-sidebar-color: #2e1a47;
+        --new-sidebar-text: #b0aebc;
+        --new-sidebar-text-hover: white;
+        --new-sidebar-active-bg: white;
+        --new-sidebar-active-text: #2e1a47;
+      }
+
+      /* MODO OSCURO */
+      [data-theme="dark"] {
+        --bulma-body-background-color: #1e1e1e;
+        --bulma-scheme-main-bis: #252526;
+        --bulma-scheme-main-ter: #1e1e1e;
+        --bulma-card-background-color: #2d2d2d;
+        --bulma-text: #ccc;
+        --bulma-text-strong: #fff;
+        --bulma-box-background-color: #2d2d2d;
+        --bulma-input-background-color: #3c3c3c;
+        --bulma-input-color: #ccc;
+        --bulma-border: #4a4a4a;
+        --bulma-link: var(--primary-color);
+        --bulma-link-hover: #8c9eff;
+
+        .notification.is-light {
+          color: #d1d1d1;
+          background-color: #3e3e3e;
+        }
+        .tag.is-light {
+          background-color: #4a4a4a;
+          color: #eee;
+        }
+      }
+
+      /* LAYOUT PRINCIPAL */
+      body,
+      html {
+        height: 100%;
+        overflow: hidden;
+        margin: 0;
+      }
+      .main-layout {
+        height: 100vh;
+      }
+
+      /* SIDEBAR */
+      .sidebar-purple {
+        width: var(--new-sidebar-width);
+        background-color: var(--new-sidebar-color);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        transition: width 0.3s ease;
+        overflow-x: hidden;
+        z-index: 20;
+      }
+      .sidebar-logo {
+        padding: 1.5rem 0;
+        display: flex;
+        justify-content: center;
+      }
+      .sidebar-logo img {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+      }
+      .sidebar-purple .menu {
+        flex: 1;
+        padding: 0;
+      }
+      .sidebar-purple .menu-list a {
+        color: var(--new-sidebar-text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 1.75em;
+        height: 70px;
+        border-left: 4px solid transparent;
+        border-radius: 0;
+        white-space: nowrap;
+      }
+      .sidebar-purple .menu-list a .icon {
+        font-size: 1.5rem;
+        transition: margin 0.3s ease;
+      }
+      .sidebar-purple .menu-list a .menu-text {
+        display: none;
+        margin-left: 1rem;
+      }
+      .sidebar-purple .menu-list a:hover {
+        background-color: #3e2a57;
+        color: var(--new-sidebar-text-hover);
+      }
+      .sidebar-purple .menu-list a.is-active {
+        background-color: var(--new-sidebar-active-bg);
+        color: var(--new-sidebar-active-text);
+        border-left-color: var(--primary-color);
+      }
+      .sidebar-bottom {
+        margin-top: auto;
+        padding: 1rem 0;
+      }
+      .sidebar-bottom a {
+        color: var(--new-sidebar-text);
+        display: flex;
+        justify-content: center;
+        padding: 0.75em 1.75em;
+        white-space: nowrap;
+      }
+      .sidebar-bottom a:hover {
+        color: var(--new-sidebar-text-hover);
+        background-color: #3e2a57;
+      }
+      .sidebar-bottom .button-text {
+        display: none;
+        margin-left: 1rem;
+      }
+
+      @media (min-width: 769px) {
+        .sidebar-purple:hover {
+          width: 260px;
+        }
+        .sidebar-purple:hover .menu-list a,
+        .sidebar-purple:hover .sidebar-bottom a {
+          justify-content: flex-start;
+          padding: 0 1.5em;
+        }
+        .sidebar-purple:hover .menu-list a .menu-text,
+        .sidebar-purple:hover .sidebar-bottom .button-text {
+          display: inline;
+        }
+      }
+
+      /* CONTENIDO */
+      .page-content-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+      .new-navbar {
+        border-bottom: 1px solid var(--bulma-border, #dbdbdb);
+        flex-shrink: 0;
+      }
+      .main-content {
+        flex: 1;
+        overflow-y: auto;
+        background: var(--bulma-scheme-main-ter);
+      }
+
+      /* ESTADO DE TABS (SIN PARPADEO) */
+      .tab-pane {
+        display: none;
+        animation: fadeIn 0.3s ease;
+      }
+      .tab-pane.is-active {
+        display: block;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(5px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* MÓVIL */
+      .mobile-bottom-bar {
+        display: none;
+      }
+      @media (max-width: 768px) {
+        .sidebar-purple {
+          display: none;
+        }
+        .mobile-bottom-bar {
+          display: flex;
+          width: 100vw;
+          height: 60px;
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          z-index: 10;
+          background-color: var(--new-sidebar-color);
+          border-top: 1px solid #4a4a4a;
+          justify-content: space-around;
+          align-items: center;
+        }
+        .mobile-bottom-bar a {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: var(--new-sidebar-text);
+          font-size: 0.7rem;
+        }
+        .main-content {
+          padding-bottom: 70px;
+        }
+        .new-navbar {
+          display: none;
+        }
+      }
+
+      /* NOTIFICACIONES */
+      .floating-notification {
+        position: fixed;
+        top: 1.5rem;
+        right: 1.5rem;
+        z-index: 1002;
+        max-width: 400px;
+      }
+    </style>
+
+    <script>
+      // Inicialización inmediata del tema para evitar flash blanco
+      (function () {
+        const theme = localStorage.getItem("theme");
+        if (theme === "dark")
+          document.documentElement.setAttribute("data-theme", "dark");
+        else document.documentElement.setAttribute("data-theme", "light");
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="columns is-gapless main-layout">
+      <div class="column is-narrow sidebar-purple">
+        <div class="sidebar-logo"><img src="/Logo.png" alt="Logo" /></div>
+        <aside class="menu">
+          <ul class="menu-list">
+            <li>
+              <a class="is-active" title="Instancias"
+                ><span class="icon"><i class="fas fa-server"></i></span
+                ><span class="menu-text">Instancias</span></a
+              >
+            </li>
+            <li>
+              <a
+                onclick="openModal('createInstanceModal')"
+                title="Crear Instancia"
+                ><span class="icon"><i class="fas fa-plus"></i></span
+                ><span class="menu-text">Crear Instancia</span></a
+              >
+            </li>
+            <li>
+              <a onclick="openModal('debugModal')" title="Diagnóstico"
+                ><span class="icon"><i class="fas fa-cog"></i></span
+                ><span class="menu-text">Diagnóstico</span></a
+              >
+            </li>
+          </ul>
+        </aside>
+        <div class="sidebar-bottom">
+          <a id="theme-toggle" onclick="toggleDarkMode()" title="Modo Oscuro">
+            <span class="icon"><i class="fas fa-moon"></i></span
+            ><span class="button-text">Modo Oscuro</span>
+          </a>
+          <a href="/auth/logout" title="Cerrar Sesión">
+            <span class="icon"><i class="fas fa-sign-out-alt"></i></span
+            ><span class="button-text">Salir</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="column page-content-wrapper">
+        <nav
+          class="navbar new-navbar"
+          role="navigation"
+          aria-label="main navigation"
+        >
+          <div class="navbar-start">
+            <div class="navbar-item">
+              <div class="control has-icons-left">
+                <input
+                  class="input is-rounded"
+                  type="text"
+                  placeholder="Buscar..."
+                />
+                <span class="icon is-small is-left"
+                  ><i class="fas fa-search"></i
+                ></span>
+              </div>
+            </div>
+          </div>
+          <div class="navbar-end">
+            <a class="navbar-item" onclick="openModal('createInstanceModal')"
+              ><span class="icon is-medium has-text-success"
+                ><i class="fas fa-plus-circle fa-lg"></i></span
+            ></a>
+            <div class="navbar-item has-dropdown is-hoverable">
+              <a class="navbar-link is-arrowless">
+                <figure class="image is-32x32">
+                  <img
+                    id="userAvatar"
+                    src="/Logo.png"
+                    alt="Logo"
+                    style="border-radius: 50%; object-fit: cover;"
+                  />
+                </figure>
+              </a>
+              <div class="navbar-dropdown is-right">
+                <div class="navbar-item">
+                    <div>
+                        <p class="has-text-weight-bold" id="userNameDisplay">Usuario</p>
+                        <p class="is-size-7 has-text-grey" id="userRoleDisplay">Cliente</p>
+                    </div>
+                </div>
+                <hr class="navbar-divider" />
+                
+                <a class="navbar-item has-text-info" href="/admin.html" id="adminLink" style="display: none;">
+                    👑 Panel Admin
+                </a>
+                
+                <a class="navbar-item has-text-danger" href="/auth/logout">Cerrar Sesión</a>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        <main class="main-content">
+          <section class="section">
+            <div class="container is-fluid">
+              <div class="level mb-4">
+                <div class="level-left">
+                  <div class="level-item">
+                    <p class="title is-4">📋 Mis Instancias</p>
+                  </div>
+                </div>
+                <div class="level-right">
+                  <div class="level-item">
+                    <button
+                      class="button is-custom-primary is-rounded"
+                      onclick="loadInstances()"
+                      id="refreshButton"
+                    >
+                      <span class="icon"><i class="fas fa-sync-alt"></i></span
+                      ><span>Actualizar Lista</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tabs is-centered is-toggle is-toggle-rounded">
+                <ul>
+                  <li
+                    class="is-active"
+                    id="tab-btn-conectadas"
+                    onclick="switchTab('conectadas')"
+                  >
+                    <a>
+                      <span class="icon is-small"
+                        ><i class="fas fa-check-circle has-text-success"></i
+                      ></span>
+                      <span
+                        >Conectadas (<span id="count-conectadas">0</span>)</span
+                      >
+                    </a>
+                  </li>
+                  <li
+                    id="tab-btn-desconectadas"
+                    onclick="switchTab('desconectadas')"
+                  >
+                    <a>
+                      <span class="icon is-small"
+                        ><i
+                          class="fas fa-exclamation-triangle has-text-warning"
+                        ></i
+                      ></span>
+                      <span
+                        >Requieren Acción (<span id="count-desconectadas"
+                          >0</span
+                        >)</span
+                      >
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+              <div
+                id="loader"
+                style="display: none; text-align: center; padding: 4rem"
+              >
+                <progress
+                  class="progress is-large is-primary"
+                  max="100"
+                ></progress>
+                <p class="has-text-centered">Sincronizando instancias...</p>
+              </div>
+
+              <div id="tab-content-wrapper">
+                <div class="tab-pane is-active" id="pane-conectadas">
+                  <div
+                    class="columns is-multiline"
+                    id="instancesList-conectadas"
+                  ></div>
+                </div>
+                <div class="tab-pane" id="pane-desconectadas">
+                  <div
+                    class="columns is-multiline"
+                    id="instancesList-desconectadas"
+                  ></div>
+                </div>
+              </div>
+
+              <div
+                id="emptyState"
+                class="notification is-warning has-text-centered"
+                style="display: none; max-width: 600px; margin: 4rem auto"
+              >
+                <p class="title is-3">📭</p>
+                <p class="subtitle is-5">No se encontraron instancias</p>
+                <p class="is-size-6">Usa el botón "+" para comenzar</p>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <nav class="mobile-bottom-bar">
+      <a class="is-active"
+        ><span class="icon"><i class="fas fa-server"></i></span
+        ><span>Instancias</span></a
+      >
+      <a onclick="openModal('createInstanceModal')"
+        ><span class="icon"><i class="fas fa-plus"></i></span
+        ><span>Crear</span></a
+      >
+      <a onclick="openModal('debugModal')"
+        ><span class="icon"><i class="fas fa-cog"></i></span
+        ><span>Ajustes</span></a
+      >
+      <a id="theme-toggle-mobile" onclick="toggleDarkMode()"
+        ><span class="icon"><i class="fas fa-moon"></i></span
+        ><span>Oscuro</span></a
+      >
+      <a href="/auth/logout"
+        ><span class="icon"><i class="fas fa-sign-out-alt"></i></span
+        ><span>Salir</span></a
+      >
+    </nav>
+
+    <div class="modal" id="createInstanceModal">
+      <div
+        class="modal-background"
+        onclick="closeModal('createInstanceModal')"
+      ></div>
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">✚ Nueva Instancia</p>
+          <button
+            class="delete"
+            onclick="closeModal('createInstanceModal')"
+          ></button>
+        </header>
+        <section class="modal-card-body">
+          <p class="subtitle is-6">Ingresa un nombre único.</p>
+          <div class="field">
+            <label class="label">Nombre</label>
+            <div class="control has-icons-left">
+              <input
+                class="input"
+                type="text"
+                id="createInstanceName"
+                placeholder="Ej: ventas_01"
+              />
+              <span class="icon is-small is-left"
+                ><i class="fas fa-server"></i
+              ></span>
+            </div>
+          </div>
+        </section>
+        <footer class="modal-card-foot">
+          <button
+            class="button is-success"
+            id="createInstanceButton"
+            onclick="submitCreateInstance()"
+          >
+            Crear y Conectar
+          </button>
+          <button
+            class="button"
+            onclick="closeModal('createInstanceModal')"
+          >
+            Cancelar
+          </button>
+        </footer>
+      </div>
+    </div>
+
+    <div class="modal" id="qrModal">
+      <div class="modal-background" onclick="closeModal('qrModal')"></div>
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">Conectar WhatsApp</p>
+          <button class="delete" onclick="closeModal('qrModal')"></button>
+        </header>
+        <section class="modal-card-body has-text-centered">
+          <p class="subtitle is-5">
+            Instancia:
+            <span class="tag is-link is-large" id="currentInstance">-</span>
+          </p>
+
+          <div id="qrLoader" style="display: none; margin: 2rem 0">
+            <progress class="progress is-small is-primary"></progress>
+            <p>Generando código QR...</p>
+          </div>
+
+          <div
+            id="qrcode"
+            class="mb-4"
+            style="
+              min-height: 250px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+          ></div>
+
+          <div class="notification is-info is-light">
+            <p>🔄 Nuevo código en: <strong id="timer">30s</strong></p>
+          </div>
+
+          <div id="connectionStatus"></div>
+
+          <div class="box has-background-light mt-4 has-text-left">
+            <p class="has-text-centered mb-2">
+              <strong>Instrucciones:</strong>
+            </p>
+            <ol style="padding-left: 20px">
+              <li>Abre WhatsApp en tu móvil.</li>
+              <li>Ve a Configuración > Dispositivos Vinculados.</li>
+              <li>Escanea este código.</li>
+            </ol>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="modal" id="sendMessageModal">
+      <div
+        class="modal-background"
+        onclick="closeModal('sendMessageModal')"
+      ></div>
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">Enviar Mensaje Rápido</p>
+          <button
+            class="delete"
+            onclick="closeModal('sendMessageModal')"
+          ></button>
+        </header>
+        <section class="modal-card-body">
+          <p class="subtitle is-6">
+            Desde: <strong id="sendMessageInstanceName">-</strong>
+          </p>
+          <div class="field">
+            <label class="label">Número (con código país)</label>
+            <div class="control has-icons-left">
+              <input
+                class="input"
+                type="tel"
+                id="sendMessageNumber"
+                placeholder="573001234567"
+              />
+              <span class="icon is-small is-left"
+                ><i class="fas fa-phone"></i
+              ></span>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Mensaje</label>
+            <textarea
+              class="textarea"
+              id="sendMessageText"
+              placeholder="Escribe aquí..."
+            ></textarea>
+          </div>
+        </section>
+        <footer class="modal-card-foot">
+          <button class="button is-success" onclick="submitSendMessage()">
+            <span class="icon"><i class="fas fa-paper-plane"></i></span>
+            <span>Enviar</span>
+          </button>
+        </footer>
+      </div>
+    </div>
+
+    <div class="modal" id="profileModal">
+      <div class="modal-background" onclick="closeModal('profileModal')"></div>
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">Perfil de la Instancia</p>
+          <button class="delete" onclick="closeModal('profileModal')"></button>
+        </header>
+        <section class="modal-card-body" id="profileData"></section>
+      </div>
+    </div>
+
+    <div class="modal" id="debugModal">
+      <div class="modal-background" onclick="closeModal('debugModal')"></div>
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">🔧 Diagnóstico</p>
+          <button class="delete" onclick="closeModal('debugModal')"></button>
+        </header>
+        <section class="modal-card-body" id="debugInfo">
+          <p>Haz clic en "Probar Conexión" para verificar la API.</p>
+        </section>
+        <footer class="modal-card-foot">
+          <button class="button is-info" onclick="testConnection()">
+            Probar Conexión
+          </button>
+          <button class="button" onclick="closeModal('debugModal')">
+            Cerrar
+          </button>
+        </footer>
+      </div>
+    </div>
+
+    <script>
+      let currentInstanceName = "";
+      let timerInterval, checkInterval;
+      let timeLeft = 30;
+
+      // --- MANEJO DE TABS ---
+      function switchTab(tabName) {
+        const tabConectadas = document.getElementById("tab-btn-conectadas");
+        const tabDesconectadas = document.getElementById(
+          "tab-btn-desconectadas"
+        );
+        const paneConectadas = document.getElementById("pane-conectadas");
+        const paneDesconectadas = document.getElementById("pane-desconectadas");
+
+        if (tabName === "conectadas") {
+          tabConectadas.classList.add("is-active");
+          tabDesconectadas.classList.remove("is-active");
+          paneConectadas.classList.add("is-active");
+          paneDesconectadas.classList.remove("is-active");
+        } else {
+          tabConectadas.classList.remove("is-active");
+          tabDesconectadas.classList.add("is-active");
+          paneConectadas.classList.remove("is-active");
+          paneDesconectadas.classList.add("is-active");
+        }
+      }
+
+      // --- CARGA DE INSTANCIAS ---
+      async function loadInstances() {
+        const loader = document.getElementById("loader");
+        const listConectadas = document.getElementById(
+          "instancesList-conectadas"
+        );
+        const listDesconectadas = document.getElementById(
+          "instancesList-desconectadas"
+        );
+        const emptyState = document.getElementById("emptyState");
+        const refreshButton = document.getElementById("refreshButton");
+
+        loader.style.display = "block";
+        refreshButton.classList.add("is-loading");
+        listConectadas.innerHTML = "";
+        listDesconectadas.innerHTML = "";
+        emptyState.style.display = "none";
+
+        let countConectadas = 0;
+        let countDesconectadas = 0;
+
+        try {
+          // Usamos safeFetch para proteger la sesión
+          const response = await safeFetch("/api/get-instances");
+          if (!response) return; // Si falló auth, safeFetch redirige
+
+          if (!response.ok) throw new Error("Error de API");
+
+          const instances = await response.json();
+
+          if (instances && Array.isArray(instances)) {
+            instances.forEach((data) => {
+              if (!data) return;
+              const instanceData = data.instance || data;
+              const rawStatus =
+                data.connectionStatus || instanceData.state || "close";
+              const normalizedState = String(rawStatus).trim().toLowerCase();
+              const card = createInstanceCard(instanceData, normalizedState);
+
+              if (normalizedState === "open") {
+                listConectadas.appendChild(card);
+                countConectadas++;
+              } else {
+                listDesconectadas.appendChild(card);
+                countDesconectadas++;
+              }
+            });
+          }
+        } catch (error) {
+          showError("Error: " + error.message);
+        } finally {
+          loader.style.display = "none";
+          refreshButton.classList.remove("is-loading");
+          document.getElementById("count-conectadas").textContent =
+            countConectadas;
+          document.getElementById("count-desconectadas").textContent =
+            countDesconectadas;
+
+          if (countConectadas === 0 && countDesconectadas > 0) {
+            switchTab("desconectadas");
+          } else {
+            switchTab("conectadas");
+          }
+
+          if (countConectadas === 0 && countDesconectadas === 0) {
+            emptyState.style.display = "block";
+          }
+        }
+      }
+
+      // --- GENERADOR DE TARJETAS ---
+      function createInstanceCard(instance, state) {
+        const cardColumn = document.createElement("div");
+        cardColumn.className = "column is-12-mobile is-6-tablet is-4-desktop";
+
+        const instanceName =
+          instance.name || instance.instanceName || "Instancia";
+        const number =
+          instance.number ||
+          (instance.owner ? instance.owner.split("@")[0] : "--");
+        const profileName = instance.profileName || "Sin perfil";
+        const isConnected = state === "open";
+        const statusColor = isConnected ? "is-success" : "is-warning";
+        const statusText = isConnected ? "Conectado" : "Desconectado";
+        const imgId = `profile-img-${instanceName.replace(
+          /[^a-zA-Z0-9]/g,
+          "_"
+        )}`;
+
+        let dropdownItems, footerItems, contentBody;
+
+        if (isConnected) {
+          contentBody = `
+            <div class="tags has-addons mb-2">
+              <span class="tag is-dark">📞</span>
+              <span class="tag is-info">${number}</span>
+            </div>
+            <div class="tags has-addons">
+              <span class="tag is-dark">👤</span>
+              <span class="tag is-light">${profileName}</span>
+            </div>
+          `;
+          footerItems = `
+            <a class="card-footer-item" onclick="enviarMensajeSimple('${instanceName}')">
+              <span class="icon mr-2"><i class="fas fa-paper-plane"></i></span> Mensaje
+            </a>
+            <a class="card-footer-item" onclick="gestionarContactos('${instanceName}')">
+              <span class="icon mr-2"><i class="fas fa-address-book"></i></span> Contactos
+            </a>
+          `;
+          dropdownItems = `
+            <a class="dropdown-item" onclick="verPerfil('${instanceName}')">
+              <span class="icon mr-2"><i class="fas fa-user"></i></span> Ver Perfil
+            </a>
+            <a class="dropdown-item" onclick="goToRecordatorios('${instanceName}')">
+              <span class="icon mr-2"><i class="fas fa-bell"></i></span> Recordatorios
+            </a>
+            <hr class="dropdown-divider">
+            <a class="dropdown-item" onclick="reiniciar('${instanceName}')">
+              <span class="icon mr-2"><i class="fas fa-sync"></i></span> Reiniciar
+            </a>
+            <a class="dropdown-item has-text-danger" onclick="desconectar('${instanceName}')">
+              <span class="icon mr-2"><i class="fas fa-plug"></i></span> Desconectar
+            </a>
+          `;
+        } else {
+          contentBody = `
+            <div class="notification is-warning is-light p-2 is-size-7">
+              ⚠️ Escanea el QR para operar.
+            </div>
+          `;
+          footerItems = `
+            <a class="card-footer-item has-text-primary" onclick="connectInstance('${instanceName}')">
+              <span class="icon mr-2"><i class="fas fa-qrcode"></i></span> Conectar
+            </a>
+            <a class="card-footer-item" onclick="generateClientLink('${instanceName}')">
+              <span class="icon mr-2"><i class="fas fa-link"></i></span> Link
+            </a>
+          `;
+          dropdownItems = `
+            <a class="dropdown-item" onclick="reiniciar('${instanceName}')">
+              <span class="icon mr-2"><i class="fas fa-sync"></i></span> Reiniciar
+            </a>
+            <a class="dropdown-item has-text-danger" onclick="desconectar('${instanceName}')">
+              <span class="icon mr-2"><i class="fas fa-trash"></i></span> Eliminar
+            </a>
+          `;
+        }
+
+        cardColumn.innerHTML = `
+          <div class="card">
+            <div class="card-content">
+              <div class="media">
+                <div class="media-left">
+                  <figure class="image is-48x48">
+                    <img id="${imgId}" src="48x48.svg" class="is-rounded" style="width: 48px; height: 48px; object-fit: cover;" onerror="this.src='48x48.svg'" />
+                  </figure>
+                </div>
+                <div class="media-content">
+                  <p class="title is-4" style="overflow: hidden; text-overflow: ellipsis;">${instanceName}</p>
+                  <p class="subtitle is-6"><span class="tag ${statusColor} is-light">${statusText}</span></p>
+                </div>
+                <div class="media-right">
+                  <div class="dropdown is-right is-hoverable">
+                    <div class="dropdown-trigger">
+                      <button class="button is-white" aria-haspopup="true"><span class="icon"><i class="fas fa-ellipsis-v"></i></span></button>
+                    </div>
+                    <div class="dropdown-menu" role="menu"><div class="dropdown-content">${dropdownItems}</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="content mt-3">${contentBody}</div>
+            </div>
+            <footer class="card-footer">${footerItems}</footer>
+          </div>
+        `;
+
+        if (isConnected) {
+          setTimeout(() => {
+            const img = document.getElementById(imgId);
+            if (img) cargarFotoInstancia(instanceName, img);
+          }, 100);
+        }
+        return cardColumn;
+      }
+
+      // --- FOTO ---
+      async function cargarFotoInstancia(instanceName, imgElement) {
+        try {
+          const resInstance = await safeFetch(`/api/get-instances`);
+          if (!resInstance) return;
+          const instances = await resInstance.json();
+          const instance = instances.find(
+            (i) =>
+              (i.instance?.name === instanceName) ||
+              (i.instance?.instanceName === instanceName) ||
+              i.name === instanceName
+          );
+          if (!instance) return;
+
+          const instanceData = instance.instance || instance;
+          let number = instanceData.owner || instanceData.number;
+          if (!number) return;
+
+          number = String(number)
+            .split("@")[0]
+            .split(":")[0]
+            .replace(/\D/g, "");
+
+          const res = await safeFetch("/api/foto", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ instance: instanceName, number }),
+          });
+          if (!res) return;
+
+          const data = await res.json();
+          if (data.picture && imgElement) {
+            imgElement.src = data.picture;
+            imgElement.onerror = () => {
+              imgElement.src = "48x48.svg";
+            };
+          }
+        } catch (e) {
+          console.error(`Error cargando foto`, e);
+        }
+      }
+
+      // --- UTILIDADES Y ACCIONES ---
+      function gestionarContactos(name) {
+        window.location.href = `contactos.html?instance=${name}`;
+      }
+      function goToRecordatorios(name) {
+        window.location.href = `recordatorios.html?instance=${name}`;
+      }
+      function generateClientLink(instanceName) {
+        const configObj = { instanceName: instanceName };
+        const encodedConfig = btoa(JSON.stringify(configObj));
+        const currentUrl = window.location.href.split("?")[0];
+        const clientUrl = `${currentUrl}?config=${encodedConfig}`;
+        prompt("Enlace para cliente:", clientUrl);
+      }
+
+      // --- API CALLS ---
+      async function submitCreateInstance() {
+        const input = document.getElementById("createInstanceName");
+        const btn = document.getElementById("createInstanceButton");
+        const name = input.value.trim();
+        if (!name) return showError("Ingresa un nombre.");
+
+        btn.classList.add("is-loading");
+        try {
+          const res = await safeFetch("/api/create-instance", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ instanceName: name }),
+          });
+          if (!res) return;
+          if (!res.ok) throw new Error("Error creando instancia");
+
+          const data = await res.json();
+          showSuccess(`Instancia ${name} creada.`);
+          closeModal("createInstanceModal");
+          input.value = "";
+          currentInstanceName = name;
+          document.getElementById("currentInstance").textContent = name;
+          openModal("qrModal");
+          if (data.base64) renderQR(data.base64);
+          else generateQRCode();
+        } catch (e) {
+          showError(e.message);
+        } finally {
+          btn.classList.remove("is-loading");
+        }
+      }
+
+      function enviarMensajeSimple(instanceName) {
+        currentInstanceName = instanceName;
+        document.getElementById("sendMessageInstanceName").textContent =
+          instanceName;
+        openModal("sendMessageModal");
+      }
+
+      async function submitSendMessage() {
+        const num = document.getElementById("sendMessageNumber").value;
+        const msg = document.getElementById("sendMessageText").value;
+        if (!num || !msg) return showError("Completa campos");
+        closeModal("sendMessageModal");
+        showSuccess("Enviando...");
+        try {
+          const res = await safeFetch("/api/send-message", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              instanceName: currentInstanceName,
+              number: num,
+              message: msg,
+            }),
+          });
+          if (!res) return;
+          const data = await res.json();
+          if (data.success) showSuccess("Enviado!");
+          else showError(data.error || "Error");
+        } catch (e) {
+          showError(e.message);
+        }
+      }
+
+      async function reiniciar(name) {
+        if (!confirm(`¿Reiniciar ${name}?`)) return;
+        try {
+          await safeFetch(`/api/restart-instance?instanceName=${name}`, {
+            method: "POST",
+          });
+          showSuccess("Reiniciando...");
+          setTimeout(loadInstances, 3000);
+        } catch (e) {
+          showError(e.message);
+        }
+      }
+
+      async function desconectar(name) {
+        if (!confirm(`¿Desconectar ${name}?`)) return;
+        try {
+          await safeFetch(`/api/logout-instance?instanceName=${name}`, {
+            method: "DELETE",
+          });
+          showSuccess("Desconectada.");
+          loadInstances();
+        } catch (e) {
+          showError(e.message);
+        }
+      }
+
+      // --- QR Logic ---
+      function connectInstance(name) {
+        currentInstanceName = name;
+        document.getElementById("currentInstance").textContent = name;
+        openModal("qrModal");
+        generateQRCode();
+      }
+
+      async function generateQRCode() {
+        const loader = document.getElementById("qrLoader");
+        const qrDiv = document.getElementById("qrcode");
+        loader.style.display = "block";
+        qrDiv.innerHTML = "";
+        clearInterval(timerInterval);
+        clearInterval(checkInterval);
+
+        try {
+          const res = await safeFetch(
+            `/api/get-qr?instanceName=${currentInstanceName}`
+          );
+          if (!res) return;
+          const data = await res.json();
+
+          if (data.instance && data.instance.state === "open") {
+            qrDiv.innerHTML =
+              '<div class="notification is-success">✅ Ya conectado</div>';
+            setTimeout(() => closeModal("qrModal"), 2000);
+            loadInstances();
+            return;
+          }
+          if (data.base64) {
+            renderQR(data.base64);
+            startTimers();
+          } else {
+            qrDiv.innerHTML = `<p>${data.message || "Esperando QR..."}</p>`;
+            setTimeout(generateQRCode, 2000);
+          }
+        } catch (e) {
+          qrDiv.innerHTML = `<p class="has-text-danger">Error: ${e.message}</p>`;
+        } finally {
+          loader.style.display = "none";
+        }
+      }
+
+      function renderQR(base64) {
+        const clean = base64.includes(",") ? base64.split(",")[1] : base64;
+        document.getElementById(
+          "qrcode"
+        ).innerHTML = `<figure class="image"><img src="data:image/png;base64,${clean}" style="max-height: 250px;" /></figure>`;
+      }
+
+      function startTimers() {
+        timeLeft = 30;
+        updateTimerDisplay();
+        timerInterval = setInterval(() => {
+          timeLeft--;
+          updateTimerDisplay();
+          if (timeLeft <= 0) generateQRCode();
+        }, 1000);
+        checkInterval = setInterval(async () => {
+          try {
+            const res = await safeFetch(
+              `/api/check-status?instanceName=${currentInstanceName}`
+            );
+            if (!res) return;
+            const data = await res.json();
+            const state = data.instance?.state || data.state;
+            if (state === "open") {
+              document.getElementById("connectionStatus").innerHTML =
+                '<span class="tag is-success">✅ Conectado</span>';
+              clearInterval(checkInterval);
+              clearInterval(timerInterval);
+              setTimeout(() => {
+                closeModal("qrModal");
+                loadInstances();
+              }, 1500);
+            }
+          } catch (e) {}
+        }, 3000);
+      }
+      function updateTimerDisplay() {
+        document.getElementById("timer").textContent = `${timeLeft}s`;
+      }
+
+// --- PERFIL ---
+      async function verPerfil(name) {
+        const div = document.getElementById("profileData");
+        openModal("profileModal");
+        div.innerHTML =
+          '<progress class="progress is-primary" max="100"></progress><p class="has-text-centered">Cargando perfil...</p>';
+
+        try {
+          // 1. Obtener listado de instancias
+          const resInstance = await safeFetch(`/api/get-instances`);
+          if (!resInstance) return;
+          const instances = await resInstance.json();
+
+          // 2. Buscar la instancia específica
+          const instanceItem = instances.find(
+            (i) =>
+              (i.instance && i.instance.name === name) ||
+              (i.instance && i.instance.instanceName === name) ||
+              i.name === name
+          );
+
+          if (!instanceItem) throw new Error("Instancia no encontrada localmente");
+
+          // --- CORRECCIÓN CLAVE AQUÍ ---
+          // Normalizamos el objeto igual que en tu versión anterior
+          const instanceData = instanceItem.instance || instanceItem;
+          const rawNumber = instanceData.owner || instanceData.number;
+
+          if (!rawNumber) throw new Error("La instancia no tiene número asignado");
+
+          // Limpiar el número (quitar @s.whatsapp.net y caracteres no numéricos)
+          const number = String(rawNumber).split("@")[0].split(":")[0].replace(/\D/g, "");
+
+          // 3. Petición al Backend para obtener la foto y datos de Business
+          const res = await safeFetch("/api/foto", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ instance: name, number: number }),
+          });
+          
+          if (!res) return;
+          const profile = await res.json();
+
+          // 4. Preparar datos para renderizar
+          const pic = profile.picture || "https://via.placeholder.com/96?text=Sin+Foto";
+          const dispName = profile.name || instanceData.profileName || name;
+          const dispNum = number;
+          const isBiz = profile.isBusiness === true;
+          const statusText = profile.status || "Sin estado";
+
+          // 5. Renderizar HTML (Estilo Bulma)
+          div.innerHTML = `
+              <article class="media">
+                <figure class="media-left">
+                  <p class="image is-96x96">
+                    <img class="is-rounded" src="${pic}" 
+                         style="object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.1); aspect-ratio: 1/1;" 
+                         onerror="this.src='https://via.placeholder.com/96?text=Error'"/>
+                  </p>
+                </figure>
+                <div class="media-content">
+                   <p class="title is-4 mb-1">${dispName}</p>
+                   <p class="subtitle is-6 mb-2">
+                     <a href="https://wa.me/${dispNum}" target="_blank" class="has-text-info">
+                       <span class="icon is-small"><i class="fab fa-whatsapp"></i></span> +${dispNum}
+                     </a>
+                   </p>
+                   
+                   <div class="tags mb-3">
+                     ${
+                       isBiz
+                         ? '<span class="tag is-info is-light"><i class="fas fa-store mr-1"></i> Empresa</span>'
+                         : '<span class="tag is-success is-light"><i class="fas fa-user mr-1"></i> Personal</span>'
+                     }
+                   </div>
+
+                   <div class="content is-small">
+                     ${
+                       profile.email
+                         ? `<div class="is-flex is-align-items-center mb-1"><span class="icon has-text-grey mr-2"><i class="fas fa-envelope"></i></span><a href="mailto:${profile.email}">${profile.email}</a></div>`
+                         : ""
+                     }
+                     ${
+                       profile.website
+                         ? `<div class="is-flex is-align-items-center mb-1"><span class="icon has-text-grey mr-2"><i class="fas fa-globe"></i></span><a href="${profile.website}" target="_blank">${profile.website}</a></div>`
+                         : ""
+                     }
+                     ${
+                       profile.address
+                         ? `<div class="is-flex is-align-items-center mb-1"><span class="icon has-text-grey mr-2"><i class="fas fa-map-marker-alt"></i></span><span>${profile.address}</span></div>`
+                         : ""
+                     }
+                   </div>
+
+                   ${
+                     statusText
+                       ? `<div class="notification is-white has-text-grey-dark p-3 mt-2 is-size-7" style="border: 1px solid #eee; border-radius: 8px; font-style: italic;">"${statusText}"</div>`
+                       : ""
+                   }
+                </div>
+              </article>
+              <hr>
+              <div class="has-text-centered is-size-7 has-text-grey">
+                ID Instancia: <strong>${name}</strong>
+              </div>
+          `;
+        } catch (e) {
+          console.error(e);
+          div.innerHTML = `
+            <div class="notification is-danger is-light">
+                <button class="delete"></button>
+                <strong>No se pudo cargar el perfil</strong>
+                <br>
+                <small>${e.message}</small>
+            </div>`;
+        }
+      }
+      // --- HELPERS ---
+      function openModal(id) {
+        document.getElementById(id).classList.add("is-active");
+      }
+      function closeModal(id) {
+        document.getElementById(id).classList.remove("is-active");
+        if (id === "qrModal") {
+          clearInterval(timerInterval);
+          clearInterval(checkInterval);
+          loadInstances();
+        }
+      }
+      function showSuccess(msg) {
+        createToast(msg, "is-success");
+      }
+      function showError(msg) {
+        createToast(msg, "is-danger");
+      }
+      function createToast(msg, type) {
+        const div = document.createElement("div");
+        div.className = `notification ${type} floating-notification`;
+        div.innerHTML = `<button class="delete" onclick="this.parentElement.remove()"></button>${msg}`;
+        document.body.appendChild(div);
+        setTimeout(() => div.remove(), 4000);
+      }
+      function testConnection() {
+        const info = document.getElementById("debugInfo");
+        info.innerHTML = "Conectando...";
+        safeFetch("/api/test-connection")
+          .then((r) => r.json())
+          .then((d) => {
+            info.innerHTML = `Status: ${d.status} <br> Success: ${d.success}`;
+          })
+          .catch((e) => (info.innerHTML = "Error: " + e.message));
+      }
+
+      // --- AUTH GUARD (SAFE FETCH) ---
+      async function safeFetch(url, options = {}) {
+        try {
+          const response = await fetch(url, options);
+          if (response.status === 401) {
+            window.location.href = "/login.html";
+            return null;
+          }
+          return response;
+        } catch (error) {
+          console.error("Fetch Error:", error);
+          throw error;
+        }
+      }
+
+      function toggleDarkMode() {
+        const html = document.documentElement;
+        const next =
+          html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        html.setAttribute("data-theme", next);
+        localStorage.setItem("theme", next);
+        const icon = next === "dark" ? "fa-sun" : "fa-moon";
+        const text = next === "dark" ? "Claro" : "Oscuro";
+        document.getElementById(
+          "theme-toggle"
+        ).innerHTML = `<span class="icon"><i class="fas ${icon}"></i></span><span class="button-text">${text}</span>`;
+        document.getElementById(
+          "theme-toggle-mobile"
+        ).innerHTML = `<span class="icon"><i class="fas ${icon}"></i></span><span>${text}</span>`;
+      }
+
+      // --- ONLOAD ---
+      window.onload = function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const configData = urlParams.get("config");
+        const themeToggle = document.getElementById("theme-toggle");
+        const mobileToggle = document.getElementById("theme-toggle-mobile");
+
+        function updateBtn(theme) {
+          const icon = theme === "dark" ? "fa-sun" : "fa-moon";
+          const text = theme === "dark" ? "Claro" : "Oscuro";
+          if (themeToggle)
+            themeToggle.innerHTML = `<span class="icon"><i class="fas ${icon}"></i></span><span class="button-text">${text}</span>`;
+          if (mobileToggle)
+            mobileToggle.innerHTML = `<span class="icon"><i class="fas ${icon}"></i></span><span>${text}</span>`;
+        }
+        updateBtn(localStorage.getItem("theme"));
+
+        // 🔥 CARGAR INFO DE USUARIO
+        loadUserInfo();
+
+        if (configData) {
+          try {
+            const config = JSON.parse(atob(configData));
+            if (config.instanceName) connectInstance(config.instanceName);
+          } catch (e) {
+            showError("Enlace corrupto");
+          }
+        } else {
+          loadInstances();
+        }
+      };
+
+      // 🔥 NUEVA FUNCIÓN PARA CARGAR INFO DE USUARIO Y ROL
+      async function loadUserInfo() {
+        try {
+            const res = await safeFetch('/api/me');
+            if(res && res.ok) {
+                const user = await res.json();
+                
+                // Foto
+                if (user.picture) {
+                    document.getElementById('userAvatar').src = user.picture;
+                }
+                
+                // Nombre y Rol
+                const cleanName = user.name || user.email.split('@')[0];
+                document.getElementById('userNameDisplay').textContent = cleanName;
+                document.getElementById('userRoleDisplay').textContent = user.role === 'admin' ? 'Administrador' : 'Usuario';
+
+                // Si es admin, mostrar el link
+                if(user.role === 'admin') {
+                    document.getElementById('adminLink').style.display = 'flex';
+                }
+            }
+        } catch(e) {
+            console.error("No se pudo cargar info del usuario");
+        }
+      }
+    </script>
+  </body>
+</html>

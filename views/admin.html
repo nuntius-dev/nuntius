@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Admin - Nuntius</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.1/css/bulma.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .admin-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; }
+    .stat-card { border-left: 4px solid; }
+    .stat-card.users { border-color: #3273dc; }
+    .stat-card.instances { border-color: #48c774; }
+    .stat-card.orphan { border-color: #ffdd57; }
+    .instance-row { transition: all 0.2s; }
+    .instance-row:hover { background-color: #f5f5f5; }
+  </style>
+</head>
+<body>
+  
+  <!-- Header Admin -->
+  <section class="admin-header">
+    <div class="container">
+      <div class="level">
+        <div class="level-left">
+          <div class="level-item">
+            <div>
+              <p class="title is-3 has-text-white">
+                <span class="icon"><i class="fas fa-crown"></i></span>
+                Panel de Administrador
+              </p>
+              <p class="subtitle is-5 has-text-white-ter" id="adminName">Cargando...</p>
+            </div>
+          </div>
+        </div>
+        <div class="level-right">
+          <div class="level-item">
+            <div class="buttons">
+              <a href="/" class="button is-light">
+                <span class="icon"><i class="fas fa-home"></i></span>
+                <span>Ver como Usuario</span>
+              </a>
+              <a href="/auth/logout" class="button is-danger is-outlined">
+                <span class="icon"><i class="fas fa-sign-out-alt"></i></span>
+                <span>Salir</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Estadísticas -->
+  <section class="section">
+    <div class="container">
+      <div class="columns">
+        <div class="column">
+          <div class="box stat-card users">
+            <p class="heading">Usuarios Registrados</p>
+            <p class="title" id="totalUsers">0</p>
+          </div>
+        </div>
+        <div class="column">
+          <div class="box stat-card instances">
+            <p class="heading">Instancias Totales</p>
+            <p class="title" id="totalInstances">0</p>
+          </div>
+        </div>
+        <div class="column">
+          <div class="box stat-card orphan">
+            <p class="heading">Sin Asignar</p>
+            <p class="title" id="orphanInstances">0</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tabs -->
+  <section class="section pt-0">
+    <div class="container">
+      <div class="tabs is-boxed is-large">
+        <ul>
+          <li class="is-active" id="tab-instances" onclick="switchTab('instances')">
+            <a>
+              <span class="icon"><i class="fas fa-server"></i></span>
+              <span>Gestión de Instancias</span>
+            </a>
+          </li>
+          <li id="tab-users" onclick="switchTab('users')">
+            <a>
+              <span class="icon"><i class="fas fa-users"></i></span>
+              <span>Gestión de Usuarios</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- TAB: Gestión de Instancias -->
+      <div id="pane-instances" class="tab-pane is-active">
+        <div class="box">
+          <div class="level mb-4">
+            <div class="level-left">
+              <div class="level-item">
+                <p class="title is-5">📋 Todas las Instancias</p>
+              </div>
+            </div>
+            <div class="level-right">
+              <div class="level-item">
+                <button class="button is-primary" onclick="loadInstances()">
+                  <span class="icon"><i class="fas fa-sync"></i></span>
+                  <span>Refrescar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="instancesLoader" style="display: none;">
+            <progress class="progress is-primary" max="100"></progress>
+          </div>
+
+          <table class="table is-fullwidth is-hoverable" id="instancesTable">
+            <thead>
+              <tr>
+                <th>Instancia</th>
+                <th>Estado</th>
+                <th>Número</th>
+                <th>Propietario</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="instancesTableBody">
+              <!-- Se llenará dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: Gestión de Usuarios -->
+      <div id="pane-users" class="tab-pane" style="display: none;">
+        <div class="box">
+          <p class="title is-5 mb-4">👥 Usuarios del Sistema</p>
+          
+          <div id="usersLoader" style="display: none;">
+            <progress class="progress is-primary" max="100"></progress>
+          </div>
+
+          <table class="table is-fullwidth is-hoverable" id="usersTable">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Instancias</th>
+                <th>Fecha Registro</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <!-- Se llenará dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal: Asignar Instancia -->
+  <div class="modal" id="assignModal">
+    <div class="modal-background" onclick="closeModal('assignModal')"></div>
+    <div class="modal-card">
+      <header class="modal-card-head">
+        <p class="modal-card-title">Asignar Instancia</p>
+        <button class="delete" onclick="closeModal('assignModal')"></button>
+      </header>
+      <section class="modal-card-body">
+        <p class="subtitle is-6">
+          Instancia: <strong id="assignInstanceName">-</strong>
+        </p>
+        <div class="field">
+          <label class="label">Asignar a Usuario</label>
+          <div class="control">
+            <div class="select is-fullwidth">
+              <select id="assignUserSelect">
+                <option value="">-- Seleccionar Usuario --</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+      <footer class="modal-card-foot">
+        <button class="button is-success" onclick="submitAssignInstance()">Asignar</button>
+        <button class="button" onclick="closeModal('assignModal')">Cancelar</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Modal: Notificaciones -->
+  <div id="notifications" style="position: fixed; top: 1rem; right: 1rem; z-index: 1000;"></div>
+
+  <script>
+    let currentInstanceToAssign = "";
+    let allUsers = [];
+
+    // =====================================
+    // INICIALIZACIÓN
+    // =====================================
+    window.onload = async function() {
+      await loadAdminInfo();
+      await loadStats();
+      await loadInstances();
+      await loadUsers();
+    };
+
+    // =====================================
+    // TABS
+    // =====================================
+    function switchTab(tabName) {
+      // Botones
+      document.getElementById('tab-instances').classList.remove('is-active');
+      document.getElementById('tab-users').classList.remove('is-active');
+      document.getElementById(`tab-${tabName}`).classList.add('is-active');
+
+      // Paneles
+      document.getElementById('pane-instances').style.display = 'none';
+      document.getElementById('pane-users').style.display = 'none';
+      document.getElementById(`pane-${tabName}`).style.display = 'block';
+    }
+
+    // =====================================
+    // DATOS DEL ADMIN
+    // =====================================
+    async function loadAdminInfo() {
+      try {
+        const res = await fetch('/api/me');
+        const user = await res.json();
+        document.getElementById('adminName').textContent = `${user.name} (${user.email})`;
+      } catch (e) {
+        console.error('Error cargando info admin:', e);
+      }
+    }
+
+    // =====================================
+    // ESTADÍSTICAS
+    // =====================================
+    async function loadStats() {
+      try {
+        const [resUsers, resInstances, resOwnership] = await Promise.all([
+          fetch('/api/admin/users'),
+          fetch('/api/get-instances'),
+          fetch('/api/admin/ownership')
+        ]);
+
+        const users = await resUsers.json();
+        const instances = await resInstances.json();
+        const ownership = await resOwnership.json();
+
+        document.getElementById('totalUsers').textContent = users.length;
+        document.getElementById('totalInstances').textContent = instances.length;
+        
+        const orphan = instances.length - ownership.length;
+        document.getElementById('orphanInstances').textContent = orphan;
+
+      } catch (e) {
+        console.error('Error cargando stats:', e);
+      }
+    }
+
+    // =====================================
+    // CARGAR INSTANCIAS
+    // =====================================
+    async function loadInstances() {
+      const loader = document.getElementById('instancesLoader');
+      const tbody = document.getElementById('instancesTableBody');
+      
+      loader.style.display = 'block';
+      tbody.innerHTML = '';
+
+      try {
+        const [resInstances, resOwnership] = await Promise.all([
+          fetch('/api/get-instances'),
+          fetch('/api/admin/ownership')
+        ]);
+
+        const instances = await resInstances.json();
+        const ownership = await resOwnership.json();
+
+        instances.forEach(inst => {
+          const data = inst.instance || inst;
+          const name = data.instanceName || data.name;
+          const number = data.owner?.split('@')[0] || data.number || '--';
+          const state = inst.connectionStatus || data.state || 'close';
+          const isOpen = state === 'open';
+
+          // Buscar propietario
+          const owner = ownership.find(o => o.instanceName === name);
+          const ownerName = owner ? owner.ownerName : '❌ Sin asignar';
+
+          const row = document.createElement('tr');
+          row.className = 'instance-row';
+          row.innerHTML = `
+            <td><strong>${name}</strong></td>
+            <td>
+              <span class="tag ${isOpen ? 'is-success' : 'is-warning'}">
+                ${isOpen ? '✓ Conectado' : '⚠ Desconectado'}
+              </span>
+            </td>
+            <td>${number}</td>
+            <td>
+              ${owner ? 
+                `<span class="tag is-info">${ownerName}</span>` : 
+                `<span class="tag is-warning">Sin asignar</span>`
+              }
+            </td>
+            <td>
+              <button class="button is-small is-primary" onclick="openAssignModal('${name}')">
+                <span class="icon"><i class="fas fa-user-plus"></i></span>
+                <span>Asignar</span>
+              </button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+
+      } catch (e) {
+        showError('Error cargando instancias: ' + e.message);
+      } finally {
+        loader.style.display = 'none';
+      }
+    }
+
+    // =====================================
+    // CARGAR USUARIOS
+    // =====================================
+    async function loadUsers() {
+      const loader = document.getElementById('usersLoader');
+      const tbody = document.getElementById('usersTableBody');
+      
+      loader.style.display = 'block';
+      tbody.innerHTML = '';
+
+      try {
+        const [resUsers, resOwnership] = await Promise.all([
+          fetch('/api/admin/users'),
+          fetch('/api/admin/ownership')
+        ]);
+
+        allUsers = await resUsers.json();
+        const ownership = await resOwnership.json();
+
+        allUsers.forEach(user => {
+          const userInstances = ownership.filter(o => o.ownerId === user.id);
+          const date = new Date(user.createdAt).toLocaleDateString('es-ES');
+
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${user.name}</td>
+            <td>${user.email}</td>
+            <td>
+              <span class="tag ${user.role === 'admin' ? 'is-danger' : 'is-info'}">
+                ${user.role === 'admin' ? '👑 Admin' : '👤 Usuario'}
+              </span>
+            </td>
+            <td><strong>${userInstances.length}</strong></td>
+            <td>${date}</td>
+            <td>
+              ${user.role !== 'admin' ? `
+                <button class="button is-small is-danger is-outlined" onclick="deleteUser('${user.id}')">
+                  <span class="icon"><i class="fas fa-trash"></i></span>
+                </button>
+              ` : '-'}
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+
+      } catch (e) {
+        showError('Error cargando usuarios: ' + e.message);
+      } finally {
+        loader.style.display = 'none';
+      }
+    }
+
+    // =====================================
+    // ASIGNAR INSTANCIA
+    // =====================================
+    function openAssignModal(instanceName) {
+      currentInstanceToAssign = instanceName;
+      document.getElementById('assignInstanceName').textContent = instanceName;
+      
+      // Llenar select de usuarios
+      const select = document.getElementById('assignUserSelect');
+      select.innerHTML = '<option value="">-- Seleccionar Usuario --</option>';
+      
+      allUsers.filter(u => u.role !== 'admin').forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.id;
+        option.textContent = `${user.name} (${user.email})`;
+        select.appendChild(option);
+      });
+      
+      openModal('assignModal');
+    }
+
+    async function submitAssignInstance() {
+      const userId = document.getElementById('assignUserSelect').value;
+      
+      if (!userId) {
+        showError('Selecciona un usuario');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/assign-instance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            instanceName: currentInstanceToAssign,
+            userId: userId
+          })
+        });
+
+        if (res.ok) {
+          showSuccess('Instancia asignada correctamente');
+          closeModal('assignModal');
+          await loadInstances();
+          await loadStats();
+        } else {
+          showError('Error al asignar instancia');
+        }
+      } catch (e) {
+        showError(e.message);
+      }
+    }
+
+    // =====================================
+    // ELIMINAR USUARIO
+    // =====================================
+    async function deleteUser(userId) {
+      if (!confirm('¿Eliminar este usuario? Sus instancias quedarán sin asignar.')) return;
+
+      try {
+        const res = await fetch(`/api/admin/delete-user?userId=${userId}`, {
+          method: 'DELETE'
+        });
+
+        if (res.ok) {
+          showSuccess('Usuario eliminado');
+          await loadUsers();
+          await loadStats();
+        } else {
+          showError('Error al eliminar usuario');
+        }
+      } catch (e) {
+        showError(e.message);
+      }
+    }
+
+    // =====================================
+    // UTILIDADES
+    // =====================================
+    function openModal(id) {
+      document.getElementById(id).classList.add('is-active');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('is-active');
+    }
+
+    function showSuccess(msg) {
+      showNotification(msg, 'is-success');
+    }
+
+    function showError(msg) {
+      showNotification(msg, 'is-danger');
+    }
+
+    function showNotification(msg, type) {
+      const div = document.createElement('div');
+      div.className = `notification ${type}`;
+      div.innerHTML = `
+        <button class="delete" onclick="this.parentElement.remove()"></button>
+        ${msg}
+      `;
+      document.getElementById('notifications').appendChild(div);
+      setTimeout(() => div.remove(), 4000);
+    }
+  </script>
+</body>
+</html>

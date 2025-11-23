@@ -1,0 +1,35 @@
+{
+  "ciudades": [
+    "Ancud", "Castro", "Puerto Montt", "Quellón", "Sin Ciudad", "prueba"
+  ],
+  "contactos": [
+    {
+      "id": "1763465923598-0",
+      "ownerId": "1",
+      "nombre": "CRISTIAN",
+      "telefono": "573045532342",
+      "fechaNacimiento": "13/11/2025",
+      "monto": "$23,000",
+      "enviado": false,
+      "notas": "id: 1",
+      "etiquetas": ["PAGA"],
+      "fechaCreacion": "2025-11-18T11:38:43.599Z",
+      "historialAtencion": [],
+      "historialMensajes": []
+    },
+    {
+      "id": "1763557259416-1",
+      "ownerId": "1",
+      "nombre": "Rafael Orozco",
+      "telefono": "56955356523",
+      "fechaNacimiento": "2025-11-30",
+      "monto": "$50,000",
+      "enviado": false,
+      "notas": "enviado: TRUE",
+      "etiquetas": ["IMPAGA"],
+      "fechaCreacion": "2025-11-19T13:00:59.416Z",
+      "historialAtencion": [],
+      "historialMensajes": []
+    }
+  ]
+}
