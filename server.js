@@ -21,6 +21,7 @@ try { checkRecordatorios = require('./scheduler'); }
 catch (e) { checkRecordatorios = () => {}; }
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
@@ -267,3 +268,4 @@ process.on('uncaughtException', err => {
 process.on('unhandledRejection', reason => {
   console.error('⚠️ PROMESA NO MANEJADA:', reason);
 });
+
