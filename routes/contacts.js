@@ -210,18 +210,46 @@ router.post('/check-number', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-// IMPORT SHEET (Asigna dueño automáticamente)
+// ========================================================
+// 🔥 IMPORTACIÓN CORREGIDA (Soporta ENV y Archivo) 🔥
+// ========================================================
 router.post('/import-from-sheet', async (req, res) => {
   try {
     let { sheetId, range, defaultCode } = req.body;
     if (!sheetId || !range) return res.status(400).json({ error: 'Falta datos' });
 
-    const auth = new google.auth.GoogleAuth({ keyFile: KEY_FILE_PATH, scopes: SCOPES });
+    // 🟢 AQUÍ ESTÁ LA MAGIA: DETECTOR INTELIGENTE
+    let auth;
+    
+    // 1. Intentamos leer desde VARIABLE DE ENTORNO (Para EasyPanel/Server)
+    if (process.env.GOOGLE_JSON) {
+        console.log("📝 Usando credenciales desde Variable de Entorno (GOOGLE_JSON)");
+        try {
+            const credentials = JSON.parse(process.env.GOOGLE_JSON);
+            auth = new google.auth.GoogleAuth({
+                credentials,
+                scopes: SCOPES
+            });
+        } catch (e) {
+            console.error("Error parseando GOOGLE_JSON:", e);
+            throw new Error("Variable GOOGLE_JSON inválida");
+        }
+    } 
+    // 2. Si no, intentamos leer desde ARCHIVO (Para Localhost)
+    else {
+        console.log("📂 Usando credenciales desde Archivo (credentials.json)");
+        auth = new google.auth.GoogleAuth({
+            keyFile: KEY_FILE_PATH,
+            scopes: SCOPES
+        });
+    }
+
     const sheets = google.sheets({ version: 'v4', auth });
     const response = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range });
     const rows = response.data.values;
-    if (!rows || rows.length < 2) return res.status(400).json({ error: 'Sin datos' });
+    if (!rows || rows.length < 2) return res.status(400).json({ error: 'La hoja está vacía o sin cabeceras' });
 
+    // Procesamiento de datos...
     const originalHeaders = [...rows[0]]; 
     const clean = (h) => String(h||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
     rows.shift(); 
@@ -229,18 +257,19 @@ router.post('/import-from-sheet', async (req, res) => {
     const headers = originalHeaders.map(clean);
     const map = { nombre: -1, telefono: -1, fecha: -1, estado: -1, monto: -1, enviado: -1, otros: [] };
     
-    // Mapeo inteligente de columnas
     headers.forEach((h, i) => {
       if (map.nombre === -1 && h.includes('nombre')) map.nombre = i;
-      else if (map.telefono === -1 && (h.includes('telefono') || h.includes('numero'))) map.telefono = i;
+      else if (map.telefono === -1 && (h.includes('telefono') || h.includes('numero') || h.includes('celular'))) map.telefono = i;
       else if (map.fecha === -1 && h.includes('fecha')) map.fecha = i;
       else if (map.estado === -1 && h.includes('estado')) map.estado = i;
-      else if (map.monto === -1 && h.includes('monto')) map.monto = i;
+      else if (map.monto === -1 && (h.includes('monto') || h.includes('valor'))) map.monto = i;
       else if (map.enviado === -1 && (h.includes('enviado') || h.includes('envio'))) map.enviado = i;
       else map.otros.push({ i, name: originalHeaders[i] });
     });
 
-    if (map.nombre === -1 || map.telefono === -1) return res.status(400).json({ error: 'Falta columna Nombre o Telefono' });
+    if (map.nombre === -1 || map.telefono === -1) {
+        return res.status(400).json({ error: 'No se encontraron las columnas "Nombre" o "Teléfono"' });
+    }
 
     const data = await readContacts();
     let count = 0;
@@ -261,7 +290,7 @@ router.post('/import-from-sheet', async (req, res) => {
       let enviado = false;
       if (map.enviado !== -1) {
           const val = String(row[map.enviado] || "").toLowerCase().trim();
-          enviado = (val === 'si' || val === 'true' || val === 'verdadero' || val === 'yes' || val === '1' || val === 'enviado');
+          enviado = (val === 'si' || val === 'true' || val === '1');
       }
       const estado = (map.estado !== -1) ? (row[map.estado] || "IMPAGA") : "IMPAGA";
       let notasArr = [];
@@ -269,7 +298,7 @@ router.post('/import-from-sheet', async (req, res) => {
 
       data.contactos.push({
         id: Date.now().toString() + '-' + count,
-        ownerId: req.user.id, // 🔥 IMPORTANTE: Asignar al usuario actual
+        ownerId: req.user.id,
         nombre: String(nombre), telefono: telefonoLimpio,
         fechaNacimiento: (map.fecha !== -1) ? row[map.fecha] : "",
         monto: monto, enviado: enviado, notas: notasArr.join('; '),
@@ -280,10 +309,13 @@ router.post('/import-from-sheet', async (req, res) => {
       count++;
     }
     await writeContacts(data);
-    res.status(201).json({ success: true, message: `Importados ${count} contactos.`, importados: count });
+    res.status(201).json({ success: true, message: `Importados ${count} contactos exitosamente.` });
+
   } catch (error) {
-    console.error('Error Sheet:', error);
-    res.status(500).json({ error: 'Error importación' });
+    console.error('🔥 Error CRÍTICO Importación:', error);
+    // Mensaje de error detallado para el frontend
+    const msg = error.message.includes('ENOENT') ? 'Faltan las credenciales de Google en el servidor.' : error.message;
+    res.status(500).json({ error: msg });
   }
 });
 
